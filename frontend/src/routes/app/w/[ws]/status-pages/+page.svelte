@@ -251,10 +251,13 @@
 	<form onsubmit={savePage}>
 		<div class="grid-2">
 			<label class="field">名称<input class="input" bind:value={editName} required maxlength={80} /></label>
-			<label class="field">
+			<div class="field">
 				公开地址
-				<input class="input" value={`/status/${editTarget?.slug ?? ''}/`} readonly disabled />
-			</label>
+				<div class="readonly-value">
+					<code>/status/{editTarget?.slug ?? ''}/</code>
+					<span class="small muted">创建后不可修改</span>
+				</div>
+			</div>
 			<label class="field">描述<input class="input" bind:value={editDescription} /></label>
 			<label class="field">主题
 				<select class="select" bind:value={editTheme}>
@@ -283,3 +286,22 @@
 </Modal>
 
 <p class="small muted">公开地址基于当前站点域名：{origin()}/status/&lt;slug&gt;/</p>
+
+<style>
+	.readonly-value {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 38px;
+		padding: 8px 12px;
+		border: 1px dashed var(--border);
+		border-radius: 10px;
+		background: var(--panel-2);
+		color: var(--muted);
+	}
+
+	.readonly-value code {
+		color: var(--text);
+		font-size: 13px;
+	}
+</style>
