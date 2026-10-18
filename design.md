@@ -398,8 +398,10 @@ stateDiagram-v2
 每个工作区可配置多个渠道，告警会同时发送到全部启用渠道。
 
 ```jsonc
-// smtp：SMTP 连接信息来自环境变量，渠道只配置收件人
-{ "to": ["ops@example.com"] }
+// smtp：连接信息在渠道内配置，未填 host 时回退到环境变量
+{ "host": "smtp.example.com", "port": 587, "username": "no-reply@example.com",
+  "password": "...", "from": "Yu <no-reply@example.com>",
+  "to": ["ops@example.com"] }
 
 // webhook
 { "url": "https://hooks.example.com/yu", "secret": "optional", "headers": {"X-Token": "..."} }

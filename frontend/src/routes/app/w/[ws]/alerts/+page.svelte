@@ -19,6 +19,11 @@
 	let channelType = $state('webhook');
 	let channelName = $state('');
 	let channelTarget = $state('');
+	let smtpHost = $state('');
+	let smtpPort = $state(587);
+	let smtpUser = $state('');
+	let smtpPass = $state('');
+	let smtpFrom = $state('');
 	let smtpTo = $state('');
 
 	let windowTitle = $state('');
@@ -50,19 +55,38 @@
 
 		const config =
 			channelType === 'smtp'
-				? { to: smtpTo.split(',').map((v) => v.trim()).filter(Boolean) }
+				? {
+						host: smtpHost.trim(),
+						port: Number(smtpPort),
+						username: smtpUser.trim(),
+						password: smtpPass,
+						from: smtpFrom.trim(),
+						to: smtpTo.split(',').map((v) => v.trim()).filter(Boolean)
+				  }
 				: { url: channelTarget };
 
 		try {
 			await alertApi.createChannel(workspace.id, { type: channelType, name: channelName, config });
 			channelName = '';
 			channelTarget = '';
+			smtpHost = '';
+			smtpUser = '';
+			smtpPass = '';
+			smtpFrom = '';
 			smtpTo = '';
 			notice = '渠道已创建';
 			await load(workspace.id);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '创建渠道失败';
 		}
+	}
+
+	function configSummary(channel: Channel) {
+		if (channel.type === 'smtp') {
+			const config = channel.config as { host?: string; port?: number; to?: string[] };
+			return `${config.host || '环境变量 SMTP'}:${config.port || 587} → ${(config.to ?? []).join(', ')}`;
+		}
+		return String((channel.config as { url?: string }).url ?? '');
 	}
 
 	async function testChannel(channel: Channel) {
@@ -135,7 +159,7 @@
 						<tr>
 							<td>{channel.name}</td>
 							<td>{channel.type}</td>
-							<td class="small muted">{JSON.stringify(channel.config)}</td>
+							<td class="small muted">{configSummary(channel)}</td>
 							<td class="num">
 								<button class="btn btn-sm" type="button" onclick={() => testChannel(channel)}>测试</button>
 								<button class="btn btn-sm btn-danger" type="button" onclick={() => deleteChannel(channel)}>删除</button>
@@ -159,6 +183,11 @@
 					{#if channelType === 'webhook'}
 						<label class="field">Webhook 地址<input class="input" bind:value={channelTarget} required placeholder="https://hooks.example.com/yu" /></label>
 					{:else}
+						<label class="field">SMTP 主机<input class="input" bind:value={smtpHost} placeholder="smtp.example.com" /></label>
+						<label class="field">端口<input class="input" type="number" bind:value={smtpPort} min={1} max={65535} /></label>
+						<label class="field">用户名<input class="input" bind:value={smtpUser} placeholder="可选" autocomplete="off" /></label>
+						<label class="field">密码 / 授权码<input class="input" type="password" bind:value={smtpPass} autocomplete="new-password" /></label>
+						<label class="field">发件人<input class="input" bind:value={smtpFrom} placeholder="Yu &lt;no-reply@example.com&gt;" /></label>
 						<label class="field">收件人（逗号分隔）<input class="input" bind:value={smtpTo} required placeholder="a@example.com, b@example.com" /></label>
 					{/if}
 				</div>

@@ -23,29 +23,61 @@ func New(cfg config.Config) *Mailer {
 	return &Mailer{cfg: cfg}
 }
 
+// Options 是一组 SMTP 连接参数。
+type Options struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
+}
+
+// Options 返回全局配置中的 SMTP 参数。
+func (m *Mailer) Options() Options {
+	return Options{
+		Host:     m.cfg.SMTPHost,
+		Port:     m.cfg.SMTPPort,
+		Username: m.cfg.SMTPUser,
+		Password: m.cfg.SMTPPass,
+		From:     m.cfg.SMTPFrom,
+	}
+}
+
 // Enabled 表示 SMTP 是否可用。
 func (m *Mailer) Enabled() bool {
 	return strings.TrimSpace(m.cfg.SMTPHost) != ""
 }
 
-// Send 发送一封纯文本邮件。
+// Send 使用全局 SMTP 配置发送一封纯文本邮件。
 func (m *Mailer) Send(ctx context.Context, to, subject, body string) error {
-	if !m.Enabled() {
+	return m.SendWith(ctx, m.Options(), to, subject, body)
+}
+
+// SendWith 使用指定 SMTP 参数发送一封纯文本邮件。
+func (m *Mailer) SendWith(ctx context.Context, opts Options, to, subject, body string) error {
+	opts.Host = strings.TrimSpace(opts.Host)
+	if opts.Host == "" {
 		return ErrNotConfigured
+	}
+	if opts.Port == 0 {
+		opts.Port = 587
+	}
+	if strings.TrimSpace(opts.From) == "" {
+		opts.From = "Yu <noreply@localhost>"
 	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
-	addr := fmt.Sprintf("%s:%d", m.cfg.SMTPHost, m.cfg.SMTPPort)
+	addr := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
 
 	var auth smtp.Auth
-	if m.cfg.SMTPUser != "" {
-		auth = smtp.PlainAuth("", m.cfg.SMTPUser, m.cfg.SMTPPass, m.cfg.SMTPHost)
+	if opts.Username != "" {
+		auth = smtp.PlainAuth("", opts.Username, opts.Password, opts.Host)
 	}
 
 	message := strings.Join([]string{
-		"From: " + m.cfg.SMTPFrom,
+		"From: " + opts.From,
 		"To: " + to,
 		"Subject: " + subject,
 		"MIME-Version: 1.0",
@@ -54,7 +86,7 @@ func (m *Mailer) Send(ctx context.Context, to, subject, body string) error {
 		body,
 	}, "\r\n")
 
-	return smtp.SendMail(addr, auth, envelopeFrom(m.cfg.SMTPFrom), []string{to}, []byte(message))
+	return smtp.SendMail(addr, auth, envelopeFrom(opts.From), []string{to}, []byte(message))
 }
 
 func envelopeFrom(from string) string {

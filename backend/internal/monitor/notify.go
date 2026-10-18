@@ -20,9 +20,15 @@ import (
 	"remoon.net/yu/backend/internal/store"
 )
 
-// SMTPChannelConfig 是邮件渠道配置（SMTP 连接信息来自环境变量）。
+// SMTPChannelConfig 是邮件渠道配置。
+// host 为空时回退到服务端环境变量中的 SMTP 配置。
 type SMTPChannelConfig struct {
-	To []string `json:"to"`
+	Host     string   `json:"host"`
+	Port     int      `json:"port"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	From     string   `json:"from"`
+	To       []string `json:"to"`
 }
 
 // WebhookChannelConfig 是 Webhook 渠道配置。
@@ -46,6 +52,16 @@ func ValidateChannelConfig(channelType string, raw json.RawMessage) error {
 		for _, address := range cfg.To {
 			if _, err := mail.ParseAddress(strings.TrimSpace(address)); err != nil {
 				return fmt.Errorf("收件人邮箱不合法: %s", address)
+			}
+		}
+		if strings.TrimSpace(cfg.Host) != "" {
+			if cfg.Port != 0 && (cfg.Port < 1 || cfg.Port > 65535) {
+				return errors.New("SMTP 端口不合法")
+			}
+			if strings.TrimSpace(cfg.From) != "" {
+				if _, err := mail.ParseAddress(cfg.From); err != nil {
+					return errors.New("发件人邮箱不合法")
+				}
 			}
 		}
 		return nil
@@ -126,9 +142,23 @@ func (s *Sender) sendSMTP(ctx context.Context, raw json.RawMessage, msg AlertMes
 		return err
 	}
 
+	options := s.mail.Options()
+	if strings.TrimSpace(cfg.Host) != "" {
+		options = mailer.Options{
+			Host:     strings.TrimSpace(cfg.Host),
+			Port:     cfg.Port,
+			Username: strings.TrimSpace(cfg.Username),
+			Password: cfg.Password,
+			From:     strings.TrimSpace(cfg.From),
+		}
+		if options.From == "" {
+			options.From = options.Username
+		}
+	}
+
 	var failures []string
 	for _, to := range cfg.To {
-		if err := s.mail.Send(ctx, strings.TrimSpace(to), msg.subject(), msg.body()); err != nil {
+		if err := s.mail.SendWith(ctx, options, strings.TrimSpace(to), msg.subject(), msg.body()); err != nil {
 			failures = append(failures, fmt.Sprintf("%s: %v", to, err))
 		}
 	}

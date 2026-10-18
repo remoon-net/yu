@@ -91,9 +91,9 @@ yu.example.com {
 | `YU_BOOTSTRAP_EMAIL` / `YU_BOOTSTRAP_PASSWORD` | 空 | 首次启动创建管理员 |
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |
 | `YU_PROBE_CONCURRENCY` | `32` | 探测并发上限 |
-| `YU_SMTP_HOST` / `YU_SMTP_PORT` | 空 / `587` | 邮件通知 SMTP |
-| `YU_SMTP_USER` / `YU_SMTP_PASS` | 空 | SMTP 账号 |
-| `YU_SMTP_FROM` | `Yu <noreply@localhost>` | 发件人 |
+| `YU_SMTP_HOST` / `YU_SMTP_PORT` | 空 / `587` | 全局默认 SMTP（渠道未填 host 时使用） |
+| `YU_SMTP_USER` / `YU_SMTP_PASS` | 空 | 全局默认 SMTP 账号 |
+| `YU_SMTP_FROM` | `Yu <noreply@localhost>` | 全局默认发件人 |
 
 ## 采集
 
@@ -108,6 +108,12 @@ yu.example.com {
 ```js
 window.yu.event('signup', { plan: 'pro' });
 ```
+
+## 邮件通知
+
+在工作区「告警与事件 → 通知渠道」中添加「邮件」渠道，直接填写 SMTP 主机、端口、用户名、密码、发件人与收件人，每个渠道可以使用不同的 SMTP 服务器。
+
+环境变量中的 SMTP 配置作为兜底：渠道未填写 `host` 时使用全局配置。
 
 ## API Key
 
