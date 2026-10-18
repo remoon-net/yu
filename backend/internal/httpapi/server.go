@@ -50,6 +50,9 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 		r.Post("/auth/invite/accept", s.handleAcceptInvite)
 		r.Post("/collect", s.handleCollect)
 
+		r.Get("/public/status/{slug}", s.handlePublicStatus)
+		r.Get("/public/share/{token}", s.handlePublicShare)
+
 		r.Group(func(r chi.Router) {
 			r.Use(s.authRequired)
 
@@ -82,6 +85,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 					r.Get("/sites/{siteID}/stats/audience", s.handleStatsAudience)
 					r.Get("/sites/{siteID}/stats/events", s.handleStatsEvents)
 					r.Get("/sites/{siteID}/stats/events/{name}", s.handleStatsEventDetail)
+					r.Post("/sites/{siteID}/share-password", s.handleSetSharePassword)
 
 					r.Get("/monitors", s.handleListMonitors)
 					r.Post("/monitors", s.handleCreateMonitor)
@@ -104,6 +108,13 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 					r.Get("/maintenance-windows", s.handleListMaintenance)
 					r.Post("/maintenance-windows", s.handleCreateMaintenance)
+
+					r.Get("/status-pages", s.handleListStatusPages)
+					r.Post("/status-pages", s.handleCreateStatusPage)
+					r.Get("/status-pages/{pageID}", s.handleGetStatusPage)
+					r.Patch("/status-pages/{pageID}", s.handleUpdateStatusPage)
+					r.Delete("/status-pages/{pageID}", s.handleDeleteStatusPage)
+					r.Put("/status-pages/{pageID}/items", s.handlePutStatusPageItems)
 					r.Delete("/maintenance-windows/{windowID}", s.handleDeleteMaintenance)
 				})
 			})

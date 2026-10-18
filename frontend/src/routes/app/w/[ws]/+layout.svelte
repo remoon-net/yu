@@ -60,6 +60,21 @@
 				>
 				<a
 					class="nav-item"
+					class:active={page.url.pathname.includes('/monitors')}
+					href={`/app/w/${workspace.slug}/monitors`}>服务监控</a
+				>
+				<a
+					class="nav-item"
+					class:active={page.url.pathname.includes('/alerts')}
+					href={`/app/w/${workspace.slug}/alerts`}>告警与事件</a
+				>
+				<a
+					class="nav-item"
+					class:active={page.url.pathname.includes('/status-pages')}
+					href={`/app/w/${workspace.slug}/status-pages`}>状态页</a
+				>
+				<a
+					class="nav-item"
 					class:active={page.url.pathname.includes('/sites')}
 					href={`/app/w/${workspace.slug}/sites`}>站点设置</a
 				>

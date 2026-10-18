@@ -146,3 +146,138 @@ export interface EventDetailResponse {
 	series: TimeSeriesPoint[];
 	props: EventPropStat[];
 }
+
+export interface Monitor {
+	id: string;
+	workspace_id: string;
+	name: string;
+	type: 'http' | 'tcp' | 'ping' | 'dns';
+	config: Record<string, unknown>;
+	interval_sec: number;
+	timeout_ms: number;
+	retries: number;
+	alert_after: number;
+	group_name: string;
+	tags: string[];
+	ssl_alert_days: number;
+	enabled: boolean;
+	next_run_at: string;
+	last_status: string;
+	last_checked_at: string | null;
+	last_latency_ms: number | null;
+	last_error: string;
+	created_at: string;
+}
+
+export interface MonitorCheck {
+	id: number;
+	checked_at: string;
+	status: string;
+	latency_ms: number;
+	status_code: number;
+	error: string;
+	cert_expires_at: string | null;
+}
+
+export interface MonitorBucket {
+	bucket: string;
+	total: number;
+	up: number;
+	p50: number;
+	p95: number;
+	p99: number;
+}
+
+export interface MonitorStats {
+	checks: number;
+	up: number;
+	down: number;
+	availability: number;
+	p50: number;
+	p95: number;
+	p99: number;
+	series: MonitorBucket[];
+	recent: MonitorCheck[];
+}
+
+export interface MonitorStatsResponse {
+	stats: MonitorStats;
+	range: { from: string; to: string; interval: string };
+}
+
+export interface Channel {
+	id: string;
+	workspace_id: string;
+	type: 'smtp' | 'webhook';
+	name: string;
+	config: Record<string, unknown>;
+	enabled: boolean;
+	created_at: string;
+}
+
+export interface Incident {
+	id: string;
+	monitor_id: string | null;
+	monitor_name: string;
+	title: string;
+	body: string;
+	severity: 'minor' | 'major' | 'critical';
+	source: 'auto' | 'manual';
+	started_at: string;
+	resolved_at: string | null;
+}
+
+export interface MaintenanceWindow {
+	id: string;
+	title: string;
+	monitor_ids: string[];
+	starts_at: string;
+	ends_at: string;
+}
+
+export interface StatusPage {
+	id: string;
+	slug: string;
+	name: string;
+	description: string;
+	has_password: boolean;
+	theme: string;
+	created_at: string;
+}
+
+export interface StatusPageItem {
+	monitor_id: string;
+	display_name: string;
+	group_name: string;
+	sort_order: number;
+}
+
+export interface StatusPageItemView extends StatusPageItem {
+	name: string;
+	type: string;
+	status: string;
+	last_checked_at: string | null;
+	latency_ms: number | null;
+	error: string;
+	uptime_24h: number;
+}
+
+export interface PublicStatusResponse {
+	page: StatusPage;
+	overall: string;
+	items: StatusPageItemView[];
+	incidents: Incident[];
+	maintenance: MaintenanceWindow[];
+	updated_at: string;
+}
+
+export interface ShareResponse {
+	site: { name: string; domain: string; timezone: string };
+	range: RangeInfo;
+	overview: StatsOverview;
+	series: TimeSeriesPoint[];
+	pages: PageStat[];
+	referrers: CountStat[];
+	channels: CountStat[];
+	devices: CountStat[];
+}

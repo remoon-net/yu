@@ -168,3 +168,8 @@ func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
+
+// IsUniqueViolation 暴露唯一约束冲突判断给 API 层。
+func IsUniqueViolation(err error) bool {
+	return isUniqueViolation(err)
+}
