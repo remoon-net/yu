@@ -78,7 +78,7 @@ Tianji.dev 的精简版：只保留**网站统计**与**服务监控**两大模�
 
 | 项 | 选型 |
 |---|---|
-| 框架 | SvelteKit + `@sveltejs/adapter-static`（SPA 模式，`fallback: index.html`） |
+| 框架 | SvelteKit 3 + `@sveltejs/adapter-static`（SPA 模式，`fallback: index.html`；配置写在 `vite.config.ts`） |
 | 版本 | Svelte 5（runes 语法：`$state` / `$derived` / `$effect`） |
 | 语言 | TypeScript |
 | 日期 | Luxon |

@@ -1,0 +1,251 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import { ApiError, api } from '#lib/api/client.js';
+	import type { CreateInviteResponse, Invite, Member, Role } from '#lib/api/types.js';
+	import { canManage, session } from '#lib/stores/session.svelte.js';
+	import { roleLabel } from '#lib/utils/roles.js';
+
+	const slug = $derived(page.params.ws ?? '');
+	const workspace = $derived(session.findWorkspace(slug));
+	const manageable = $derived(canManage(workspace?.role));
+	const isOwner = $derived(workspace?.role === 'owner');
+
+	let members = $state<Member[]>([]);
+	let invites = $state<Invite[]>([]);
+	let error = $state('');
+	let notice = $state('');
+	let busy = $state(false);
+
+	let inviteEmail = $state('');
+	let inviteRole = $state<Role>('member');
+	let inviteUrl = $state('');
+	let inviteEmailSent = $state(false);
+
+	$effect(() => {
+		if (!workspace) return;
+		void loadAll(workspace.id);
+	});
+
+	async function loadAll(workspaceId: string) {
+		error = '';
+
+		try {
+			const [memberList, inviteList] = await Promise.all([
+				api.get<Member[]>(`/api/workspaces/${workspaceId}/members`),
+				manageable
+					? api.get<Invite[]>(`/api/workspaces/${workspaceId}/invites`)
+					: Promise.resolve([] as Invite[])
+			]);
+
+			members = memberList;
+			invites = inviteList;
+		} catch (err) {
+			error = err instanceof Error ? err.message : '加载成员失败';
+		}
+	}
+
+	async function invite(event: SubmitEvent) {
+		event.preventDefault();
+		if (!workspace) return;
+
+		busy = true;
+		error = '';
+		notice = '';
+		inviteUrl = '';
+
+		try {
+			const result = await api.post<CreateInviteResponse>(
+				`/api/workspaces/${workspace.id}/invites`,
+				{ email: inviteEmail, role: inviteRole }
+			);
+
+			inviteUrl = result.invite_url;
+			inviteEmailSent = result.email_sent;
+			notice = result.email_sent ? '邀请邮件已发送' : '邀请已创建，请复制链接发送给对方';
+			inviteEmail = '';
+
+			await loadAll(workspace.id);
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '创建邀请失败';
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function updateRole(member: Member, role: string) {
+		if (!workspace) return;
+
+		error = '';
+		notice = '';
+
+		try {
+			await api.patch(`/api/workspaces/${workspace.id}/members/${member.user_id}`, { role });
+			await loadAll(workspace.id);
+			notice = '成员角色已更新';
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '更新角色失败';
+		}
+	}
+
+	async function removeMember(member: Member) {
+		if (!workspace) return;
+		if (!confirm(`确定将 ${member.email} 移出工作区？`)) return;
+
+		error = '';
+		notice = '';
+
+		try {
+			await api.delete(`/api/workspaces/${workspace.id}/members/${member.user_id}`);
+			await loadAll(workspace.id);
+			notice = '成员已移除';
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '移除成员失败';
+		}
+	}
+
+	async function copy() {
+		try {
+			await navigator.clipboard.writeText(inviteUrl);
+			notice = '邀请链接已复制';
+		} catch {
+			error = '复制失败，请手动选择链接';
+		}
+	}
+</script>
+
+<div class="page-head">
+	<div>
+		<h1>工作区设置</h1>
+		<p class="small muted">管理成员与邀请链接。</p>
+	</div>
+	<span class="badge">{roleLabel(workspace?.role)}</span>
+</div>
+
+{#if error}
+	<div class="error" style="margin-bottom: 16px">{error}</div>
+{/if}
+{#if notice}
+	<div class="badge ok" style="margin-bottom: 16px">{notice}</div>
+{/if}
+
+<div class="stack">
+	<div class="card">
+		<div class="card-head"><h2>成员</h2></div>
+
+		<table class="table">
+			<thead>
+				<tr>
+					<th>成员</th>
+					<th>角色</th>
+					<th class="num">操作</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each members as member (member.user_id)}
+					<tr>
+						<td>
+							<div>{member.name}</div>
+							<div class="small muted">{member.email}</div>
+						</td>
+						<td>
+							{#if manageable}
+								<select
+									class="select"
+									style="max-width: 130px"
+									value={member.role}
+									onchange={(event) => updateRole(member, event.currentTarget.value)}
+								>
+									{#if isOwner}<option value="owner">所有者</option>{/if}
+									<option value="admin">管理员</option>
+									<option value="member">成员</option>
+								</select>
+							{:else}
+								{roleLabel(member.role)}
+							{/if}
+						</td>
+						<td class="num">
+							{#if manageable}
+								<button
+									class="btn btn-sm btn-danger"
+									type="button"
+									onclick={() => removeMember(member)}>移除</button
+								>
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+
+	{#if manageable && workspace}
+		<form class="card" onsubmit={invite}>
+			<div class="card-head"><h2>邀请成员</h2></div>
+
+			<div class="grid-2">
+				<label class="field">
+					邮箱
+					<input
+						class="input"
+						type="email"
+						bind:value={inviteEmail}
+						required
+						placeholder="teammate@example.com"
+					/>
+				</label>
+
+				<label class="field">
+					角色
+					<select class="select" bind:value={inviteRole}>
+						{#if isOwner}<option value="owner">所有者</option>{/if}
+						<option value="admin">管理员</option>
+						<option value="member">成员</option>
+					</select>
+				</label>
+			</div>
+
+			<div class="row" style="margin-top: 14px">
+				<button class="btn btn-primary" type="submit" disabled={busy}>
+					{busy ? '创建中…' : '生成邀请'}
+				</button>
+				{#if !inviteEmailSent && inviteUrl}
+					<span class="small muted">SMTP 未配置时将直接返回链接</span>
+				{/if}
+			</div>
+
+			{#if inviteUrl}
+				<div class="copy-box" style="margin-top: 14px">
+					{inviteUrl}
+					<button class="btn btn-sm" type="button" onclick={copy}>复制</button>
+				</div>
+			{/if}
+		</form>
+
+		<div class="card">
+			<div class="card-head"><h2>待接受的邀请</h2></div>
+
+			{#if invites.length === 0}
+				<p class="empty">暂无待接受的邀请</p>
+			{:else}
+				<table class="table">
+					<thead>
+						<tr>
+							<th>邮箱</th>
+							<th>角色</th>
+							<th>过期时间</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each invites as item (item.id)}
+							<tr>
+								<td>{item.email}</td>
+								<td>{roleLabel(item.role)}</td>
+								<td class="muted">{new Date(item.expires_at).toLocaleString('zh-CN')}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</div>
+	{/if}
+</div>
