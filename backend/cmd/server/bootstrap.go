@@ -34,7 +34,7 @@ func bootstrapAdmin(ctx context.Context, st *store.Store, cfg config.Config) err
 		return err
 	}
 
-	workspace, err := st.CreateWorkspace(ctx, cfg.BootstrapWorkspace, user.ID)
+	workspace, err := st.CreateWorkspace(ctx, cfg.BootstrapWorkspace, "", user.ID)
 	if err != nil {
 		return err
 	}

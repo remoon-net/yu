@@ -14,6 +14,7 @@
 
 	let showCreate = $state(false);
 	let workspaceName = $state('');
+	let workspaceSlug = $state('');
 	let createError = $state('');
 	let creating = $state(false);
 
@@ -26,10 +27,14 @@
 		createError = '';
 
 		try {
-			const created = await api.post<Workspace>('/api/workspaces', { name });
+			const created = await api.post<Workspace>('/api/workspaces', {
+				name,
+				slug: workspaceSlug.trim().toLowerCase()
+			});
 			await session.load(true);
 			showCreate = false;
 			workspaceName = '';
+			workspaceSlug = '';
 			await goto(`/app/w/${created.slug}/analytics/`);
 		} catch (err) {
 			createError = err instanceof Error ? err.message : '创建工作区失败';
@@ -155,6 +160,19 @@
 				工作区名称
 				<input class="input" bind:value={workspaceName} required maxlength={60} placeholder="例如：我的产品" />
 			</label>
+			<label class="field" style="margin-top: 12px">
+				工作区标识（可选）
+				<input
+					class="input"
+					bind:value={workspaceSlug}
+					pattern={"[a-z0-9][a-z0-9\\-]{0,38}[a-z0-9]"}
+					maxlength={40}
+					placeholder="my-team"
+				/>
+			</label>
+			<p class="small muted" style="margin: 8px 0 0">
+				路径会变成 /app/w/&lt;标识&gt;/；小写字母、数字与连字符，留空自动生成 ws-xxxxxx。
+			</p>
 			{#if createError}<div class="error" style="margin-top: 12px">{createError}</div>{/if}
 			<div class="modal-actions">
 				<button class="btn" type="button" onclick={() => (showCreate = false)}>取消</button>

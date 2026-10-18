@@ -5,6 +5,7 @@
 	import { session } from '#lib/stores/session.svelte.js';
 
 	let name = $state('');
+	let slug = $state('');
 	let error = $state('');
 	let creating = $state(false);
 
@@ -20,7 +21,10 @@
 		creating = true;
 
 		try {
-			const workspace = await api.post<Workspace>('/api/workspaces', { name });
+			const workspace = await api.post<Workspace>('/api/workspaces', {
+				name,
+				slug: slug.trim().toLowerCase()
+			});
 			await session.load(true);
 			await goto(`/app/w/${workspace.slug}/analytics/`);
 		} catch (err) {
@@ -45,6 +49,19 @@
 				工作区名称
 				<input class="input" bind:value={name} required maxlength={60} placeholder="例如：我的项目" />
 			</label>
+
+			<label class="field">
+				工作区标识（可选）
+				<input
+					class="input"
+					bind:value={slug}
+					pattern={"[a-z0-9][a-z0-9\\-]{0,38}[a-z0-9]"}
+					maxlength={40}
+					placeholder="my-team"
+				/>
+			</label>
+
+			<p class="small muted">路径会变成 /app/w/&lt;标识&gt;/；留空自动生成 ws-xxxxxx。</p>
 
 			<button class="btn btn-primary" type="submit" disabled={creating}>
 				{creating ? '创建中…' : '创建工作区'}

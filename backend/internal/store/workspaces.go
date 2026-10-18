@@ -2,8 +2,8 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 	"unicode"
@@ -11,6 +11,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
+
+// ErrSlugTaken 表示工作区标识已被占用。
+var ErrSlugTaken = errors.New("工作区标识已被占用")
 
 // Slugify 把名称转换为可用于 URL 的标识，保留中英文与数字。
 func Slugify(name string) string {
@@ -43,18 +46,21 @@ func Slugify(name string) string {
 }
 
 // CreateWorkspace 创建工作区，并把 ownerID 设为 owner。
-func (s *Store) CreateWorkspace(ctx context.Context, name string, ownerID uuid.UUID) (*Workspace, error) {
-	base := Slugify(name)
+// slug 为空时自动生成 ws-xxxxxx；显式指定的 slug 冲突时返回 ErrSlugTaken。
+func (s *Store) CreateWorkspace(ctx context.Context, name, slug string, ownerID uuid.UUID) (*Workspace, error) {
+	custom := strings.TrimSpace(slug)
 
 	for attempt := 0; attempt < 20; attempt++ {
+		wsSlug := custom
+		if wsSlug == "" {
+			wsSlug = "ws-" + randomSlugSuffix()
+		}
+
 		ws := &Workspace{
 			ID:        uuid.New(),
 			Name:      strings.TrimSpace(name),
-			Slug:      base,
+			Slug:      wsSlug,
 			CreatedAt: time.Now().UTC(),
-		}
-		if attempt > 0 {
-			ws.Slug = fmt.Sprintf("%s-%d", base, attempt+1)
 		}
 
 		err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -73,6 +79,9 @@ func (s *Store) CreateWorkspace(ctx context.Context, name string, ownerID uuid.U
 		})
 
 		if isUniqueViolation(err) {
+			if custom != "" {
+				return nil, ErrSlugTaken
+			}
 			continue
 		}
 		if err != nil {
@@ -83,6 +92,19 @@ func (s *Store) CreateWorkspace(ctx context.Context, name string, ownerID uuid.U
 	}
 
 	return nil, errors.New("无法生成唯一的工作区标识")
+}
+
+const slugAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+func randomSlugSuffix() string {
+	var buf [6]byte
+	_, _ = rand.Read(buf[:])
+
+	out := make([]byte, len(buf))
+	for i, b := range buf {
+		out[i] = slugAlphabet[int(b)%len(slugAlphabet)]
+	}
+	return string(out)
 }
 
 // ListWorkspacesByUser 返回用户所属的全部工作区及其角色。

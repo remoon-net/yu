@@ -2,9 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/mail"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -15,6 +18,8 @@ import (
 	"remoon.net/yu/backend/internal/monitor"
 	"remoon.net/yu/backend/internal/store"
 )
+
+var workspaceSlugPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$`)
 
 var roleRank = map[string]int{"member": 1, "admin": 2, "owner": 3}
 
@@ -80,6 +85,7 @@ func (s *Server) handleListWorkspaces(w http.ResponseWriter, r *http.Request) {
 
 type createWorkspaceRequest struct {
 	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
@@ -94,14 +100,24 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slug := strings.ToLower(trimSpace(req.Slug))
+	if slug != "" && !workspaceSlugPattern.MatchString(slug) {
+		writeError(w, http.StatusBadRequest, "工作区标识只能包含小写字母、数字与连字符，长度 2-40")
+		return
+	}
+
 	user := userFromContext(r.Context())
 	if user == nil {
 		writeError(w, http.StatusUnauthorized, "未登录或会话已过期")
 		return
 	}
 
-	ws, err := s.store.CreateWorkspace(r.Context(), name, user.ID)
+	ws, err := s.store.CreateWorkspace(r.Context(), name, slug, user.ID)
 	if err != nil {
+		if errors.Is(err, store.ErrSlugTaken) {
+			writeError(w, http.StatusConflict, "工作区标识已被占用")
+			return
+		}
 		slog.Error("创建工作区失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "创建工作区失败")
 		return
