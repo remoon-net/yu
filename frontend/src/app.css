@@ -349,6 +349,30 @@ label.field {
 	color: var(--muted);
 }
 
+.stat-delta {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.stat-delta.good {
+	color: var(--ok);
+}
+
+.stat-delta.bad {
+	color: var(--danger);
+}
+
+.stat-delta.flat {
+	color: var(--muted);
+}
+
+.stat-delta-label {
+	color: var(--muted);
+}
+
 .grid-2 {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

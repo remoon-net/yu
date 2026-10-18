@@ -6,6 +6,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { parseInterval, parseTimeout, formatInterval } from '#lib/utils/duration.js';
+	import { parseTags } from '#lib/utils/tags.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
@@ -26,6 +27,7 @@
 	let timeout = $state('10s');
 	let alertAfter = $state(2);
 	let groupName = $state('');
+	let tags = $state('');
 
 	function buildConfig() {
 		switch (type) {
@@ -80,10 +82,12 @@
 				interval_sec: intervalSec,
 				timeout_ms: timeoutMs,
 				alert_after: Number(alertAfter),
-				group_name: groupName
+				group_name: groupName,
+				tags: parseTags(tags)
 			});
 			name = '';
 			target = '';
+			tags = '';
 			showForm = false;
 			await load(workspace.id);
 		} catch (err) {
@@ -141,6 +145,7 @@
 				</label>
 			{/if}
 			<label class="field">分组<input class="input" bind:value={groupName} placeholder="例如：核心服务" /></label>
+			<label class="field">标签<input class="input" bind:value={tags} placeholder="逗号分隔，例如：prod, api" /></label>
 			<label class="field">间隔<input class="input" bind:value={interval} placeholder="60s / 1m / 1h" /></label>
 			<label class="field">超时<input class="input" bind:value={timeout} placeholder="500ms / 10s" /></label>
 			<label class="field">连续失败几次告警<input class="input" type="number" bind:value={alertAfter} min={1} max={10} /></label>
@@ -165,6 +170,11 @@
 						<td>
 							<div>{monitor.name}</div>
 							<div class="small muted">{monitor.type} · {monitor.group_name || '未分组'} · 每 {formatInterval(monitor.interval_sec)}</div>
+							{#if monitor.tags.length > 0}
+								<div class="monitor-tags">
+									{#each monitor.tags as tag (tag)}<span class="badge">{tag}</span>{/each}
+								</div>
+							{/if}
 						</td>
 						<td>
 							<span class="badge" class:ok={monitor.last_status === 'up'}>{label(monitor)}</span>
@@ -184,3 +194,17 @@
 		</table>
 	</div>
 {/if}
+
+<style>
+	.monitor-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin-top: 4px;
+	}
+
+	.monitor-tags :global(.badge) {
+		font-size: 11px;
+		padding: 1px 7px;
+	}
+</style>

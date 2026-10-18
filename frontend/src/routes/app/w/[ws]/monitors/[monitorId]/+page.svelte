@@ -14,6 +14,7 @@
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { formatInterval, formatTimeout, parseInterval, parseTimeout } from '#lib/utils/duration.js';
 	import { formatNumber } from '#lib/utils/format.js';
+	import { parseTags } from '#lib/utils/tags.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const monitorId = $derived(page.params.monitorId ?? '');
@@ -45,6 +46,7 @@
 	let editRetries = $state(0);
 	let editAlertAfter = $state(2);
 	let editGroup = $state('');
+	let editTags = $state('');
 	let editSSLDays = $state(14);
 	let editEnabled = $state(true);
 
@@ -148,6 +150,7 @@
 		editRetries = monitor.retries;
 		editAlertAfter = monitor.alert_after;
 		editGroup = monitor.group_name;
+		editTags = monitor.tags.join(', ');
 		editSSLDays = monitor.ssl_alert_days;
 		editEnabled = monitor.enabled;
 
@@ -208,6 +211,7 @@
 				retries: Number(editRetries),
 				alert_after: Number(editAlertAfter),
 				group_name: editGroup,
+				tags: parseTags(editTags),
 				ssl_alert_days: Number(editSSLDays),
 				enabled: editEnabled
 			});
@@ -277,6 +281,7 @@
 			<div class="grid-2">
 				<label class="field">名称<input class="input" bind:value={editName} required maxlength={80} /></label>
 				<label class="field">分组<input class="input" bind:value={editGroup} placeholder="例如：核心服务" /></label>
+				<label class="field">标签<input class="input" bind:value={editTags} placeholder="逗号分隔，例如：prod, api" /></label>
 				<label class="field">
 					{monitor.type === 'http' ? 'URL' : monitor.type === 'dns' ? '域名' : '主机'}
 					<input class="input" bind:value={editTarget} required />

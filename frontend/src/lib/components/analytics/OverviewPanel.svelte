@@ -54,8 +54,22 @@
 		};
 	});
 
-	const option = $derived<EChartsCoreOption>({
-		grid: { left: 44, right: 16, top: 34, bottom: 30 },
+	function deltaOf(current: number, previous: number): number | null {
+		if (!previous) return current > 0 ? Number.POSITIVE_INFINITY : null;
+		return ((current - previous) / previous) * 100;
+	}
+
+	// 比率类指标（跳出率、平均停留）没有上期基数时不做对比。
+	function rateDelta(current: number, previous: number): number | null {
+		if (!previous) return null;
+		return ((current - previous) / previous) * 100;
+	}
+
+	function bounceRate(bounces: number, sessions: number): number {
+		return sessions ? (bounces / sessions) * 100 : 0;
+	}
+
+	const option = $derived<EChartsCoreOption>({		grid: { left: 44, right: 16, top: 34, bottom: 30 },
 		tooltip: { trigger: 'axis' },
 		legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
 		xAxis: {
@@ -99,18 +113,40 @@
 {/if}
 
 <div class="stats-grid">
-	<StatCard label="浏览量 PV" value={formatNumber(data?.overview.pv)} />
-	<StatCard label="访客 UV" value={formatNumber(data?.overview.uv)} />
-	<StatCard label="会话数" value={formatNumber(data?.overview.sessions)} />
+	<StatCard
+		label="浏览量 PV"
+		value={formatNumber(data?.overview.pv)}
+		delta={deltaOf(data?.overview.pv ?? 0, data?.previous.pv ?? 0)}
+	/>
+	<StatCard
+		label="访客 UV"
+		value={formatNumber(data?.overview.uv)}
+		delta={deltaOf(data?.overview.uv ?? 0, data?.previous.uv ?? 0)}
+	/>
+	<StatCard
+		label="会话数"
+		value={formatNumber(data?.overview.sessions)}
+		delta={deltaOf(data?.overview.sessions ?? 0, data?.previous.sessions ?? 0)}
+	/>
 	<StatCard
 		label="跳出率"
 		value={formatPercent(data?.overview.bounces ?? 0, data?.overview.sessions ?? 0)}
+		delta={rateDelta(
+			bounceRate(data?.overview.bounces ?? 0, data?.overview.sessions ?? 0),
+			bounceRate(data?.previous.bounces ?? 0, data?.previous.sessions ?? 0)
+		)}
+		invert
 	/>
 	<StatCard
 		label="平均停留"
 		value={formatDuration(
 			averageDuration(data?.overview.duration_sum ?? 0, data?.overview.sessions ?? 0)
 		)}
+		delta={rateDelta(
+			averageDuration(data?.overview.duration_sum ?? 0, data?.overview.sessions ?? 0),
+			averageDuration(data?.previous.duration_sum ?? 0, data?.previous.sessions ?? 0)
+		)}
+		invert
 	/>
 </div>
 

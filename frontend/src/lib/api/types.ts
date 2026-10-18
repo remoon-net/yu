@@ -124,6 +124,7 @@ export interface RangeInfo {
 
 export interface OverviewResponse {
 	overview: StatsOverview;
+	previous: StatsOverview;
 	series: TimeSeriesPoint[];
 	range: RangeInfo;
 }

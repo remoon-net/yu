@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"remoon.net/yu/backend/internal/store"
 )
 
 // rangeInfo 描述统计查询的时间范围。
@@ -128,6 +130,14 @@ func (s *Server) handleStatsOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 上期：与当前区间等长、紧邻在前的一段，用于环比。
+	span := rn.To.Sub(rn.From)
+	previous, err := s.store.Overview(ctx, site.ID, rn.From.Add(-span), rn.From)
+	if err != nil {
+		slog.Warn("查询上期概览失败", "err", err)
+		previous = store.StatsOverview{}
+	}
+
 	series, err := s.store.Series(ctx, site.ID, rn.From, rn.To, rn.Interval, rn.Timezone)
 	if err != nil {
 		slog.Error("查询趋势失败", "err", err)
@@ -137,6 +147,7 @@ func (s *Server) handleStatsOverview(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"overview": overview,
+		"previous": previous,
 		"series":   series,
 		"range": map[string]any{
 			"from":     rn.From,
