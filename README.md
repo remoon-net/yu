@@ -1,28 +1,61 @@
 # Yu
 
-Tianji 精简版：网站统计 + 服务监控。前后端分离，后端单体 Go 服务，前端 SvelteKit 静态站点。
+Tianji 精简版：网站统计 + 服务监控 + 短链/遥测，前后端分离。后端单体 Go 服务，前端 SvelteKit 静态站点。
 
 ## 功能
 
-- 网站统计：PV/UV、会话、跳出率、停留时长、页面、来源/UTM、访客画像、实时访客、自定义事件、公开看板
-- 服务监控：HTTP / TCP / Ping / DNS 探测、可用率与延迟分位、静默、SSL 到期提醒
-- 告警：连续失败阈值、恢复通知、邮件 / Webhook（HMAC 签名）、维护窗口
-- 事件：自动故障记录、手动事件、状态页展示
-- 状态页：公开访问、组件分组、访问密码
-- 多用户与工作区、邀请制注册、API Key
+**网站统计**
+
+- PV / UV、会话数、跳出率、平均停留，带本期 vs 上期环比
+- 热门页面、入口页、退出页
+- 来源、UTM、渠道归类
+- 访客画像：设备、浏览器、操作系统、屏幕、语言、国家
+- 实时访客、自定义事件与属性、公开看板（可设密码）
+
+**服务监控**
+
+- HTTP / TCP / Ping / DNS 探测，支持状态码、响应体、JSONPath、耗时断言
+- 可用率、P50/P95/P99、状态时间轴
+- 连续失败告警、恢复通知、静默期、维护窗口抑制
+- SSL 到期提醒、故障事件与手动 incident、公开状态页
+
+**短链与遥测**
+
+- 短链 `/s/<标识>`：302 跳转、UTM 透传、二维码、过期与启停、点击趋势与来源分布
+- 遥测像素 `/t/<标识>.gif`：1×1 透明图埋点，统计无法注入脚本的页面的曝光
+
+**平台能力**
+
+- 多用户与工作区（owner / admin / member），邀请制注册
+- API Key + REST API，深色 / 浅色主题
+- PostgreSQL 存储，事件按月分区，原始数据永久保留
 
 ## 技术栈
 
 - 后端：Go + chi + pgx + PostgreSQL，内嵌 SQL 迁移
 - 前端：SvelteKit 3 + Svelte 5 + TypeScript + Luxon + ECharts，`adapter-static` 静态构建
-- 部署：静态文件由 Caddy 托管，`/api/*` 反代到 Go
+- 部署：静态文件由 Caddy 托管，`/api/*`、`/s/*`、`/t/*` 反代到 Go
 
 ## 目录
 
 ```text
-backend/    Go 服务、迁移、采集脚本
-frontend/   SvelteKit 控制台
-design.md   设计文档
+backend/
+  cmd/server/            启动入口
+  internal/httpapi/      HTTP 路由与 handler
+  internal/store/        数据访问（pgx + 手写 SQL）
+  internal/analytics/    采集、UA 解析、渠道判定
+  internal/monitor/      探针、调度器、断言
+  internal/auth/         会话、密码、邀请
+  internal/mailer/       SMTP 发送
+  migrations/            内嵌 SQL 迁移
+  scripts/               演示数据脚本
+frontend/
+  src/lib/api/           API 封装与类型
+  src/lib/components/    通用组件与图表
+  src/routes/            页面路由
+  static/collect.js      采集脚本
+  build/                 adapter-static 产物
+design.md                设计文档
 ```
 
 ## 快速开始
@@ -54,7 +87,11 @@ YU_API=http://127.0.0.1:8080 npm run dev
 
 访问 Vite 输出的地址，使用上面的管理员账号登录。
 
-本地开发和生产使用同一域名，采集脚本由前端静态目录提供（`/collect.js`）。若前后端端口不同，请把 `YU_PUBLIC_BASE_URL` 设为前端地址，安装代码里的脚本 URL 才会正确。
+本地开发和生产使用同一域名，采集脚本由前端静态目录提供（`/collect.js`）。若前后端端口不同，请把 `YU_PUBLIC_BASE_URL` 设为前端地址，安装代码里的脚本 URL 才会正确；同时把前端来源加入 `YU_ALLOWED_ORIGINS`，否则浏览器会拦截跨域请求：
+
+```bash
+export YU_ALLOWED_ORIGINS='http://localhost:5173'
+```
 
 ## 生产部署
 
@@ -189,6 +226,22 @@ delete from short_links where slug like 'demo-%';
 ## API Key
 
 工作区设置中创建，使用 `Authorization: Bearer <token>` 调用 API（支持 `api_key` 认证，写请求无需 CSRF）。
+
+## 测试与检查
+
+```bash
+# 后端
+go build ./...
+go test ./...
+gofmt -l backend
+
+# 前端
+cd frontend
+npm run check
+npm run build
+```
+
+`go test` 目前覆盖纯逻辑：User-Agent 解析与渠道判定、短链/像素的标识与目标校验、监控的 JSONPath 断言。
 
 ## 注意事项
 
