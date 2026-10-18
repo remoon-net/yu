@@ -109,8 +109,8 @@ yu/
 │   │   ├── lib/components/  # 通用组件、图表封装
 │   │   ├── lib/stores/      # 会话、工作区、主题
 │   │   └── routes/
-│   ├── static/collect.js    # 采集脚本（独立构建产物）
-│   ├── svelte.config.js
+│   ├── static/collect.js    # 采集脚本（前端静态托管）
+│   ├── vite.config.ts
 │   └── package.json
 ├── design.md
 └── README.md

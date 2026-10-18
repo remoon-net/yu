@@ -54,6 +54,8 @@ YU_API=http://127.0.0.1:8080 npm run dev
 
 访问 Vite 输出的地址，使用上面的管理员账号登录。
 
+本地开发和生产使用同一域名，采集脚本由前端静态目录提供（`/collect.js`）。若前后端端口不同，请把 `YU_PUBLIC_BASE_URL` 设为前端地址，安装代码里的脚本 URL 才会正确。
+
 ## 生产部署
 
 ```bash
@@ -76,7 +78,12 @@ yu.example.com {
 }
 ```
 
-`/collect.js` 也由 Go 提供，若 API 单独走子域名，请同步在 Caddy 中反代。
+采集脚本随前端构建产物发布（`frontend/static/collect.js` → `build/collect.js`），与页面同域，由上面的静态托管直接提供。建议给它短缓存：
+
+```caddy
+@collect path /collect.js
+header @collect Cache-Control "public, max-age=300"
+```
 
 ## 环境变量
 
@@ -84,7 +91,7 @@ yu.example.com {
 |---|---|---|
 | `YU_ADDR` | `:8080` | 监听地址 |
 | `YU_DATABASE_URL` | 本地 yu 库 | PostgreSQL 连接串 |
-| `YU_PUBLIC_BASE_URL` | `http://localhost:8080` | 公开访问地址，用于安装脚本与邀请链接 |
+| `YU_PUBLIC_BASE_URL` | `http://localhost:8080` | 对外访问地址（页面与邀请链接），也是安装脚本里的域名 |
 | `YU_ALLOWED_ORIGINS` | 空 | 允许跨域的控制台来源，逗号分隔 |
 | `YU_SECURE_COOKIES` | `false` | HTTPS 部署时设为 `true` |
 | `YU_SESSION_TTL` | `720h` | 会话有效期 |

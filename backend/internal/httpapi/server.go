@@ -7,7 +7,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"remoon.net/yu/backend/internal/collectscript"
 	"remoon.net/yu/backend/internal/config"
 	"remoon.net/yu/backend/internal/mailer"
 	"remoon.net/yu/backend/internal/store"
@@ -36,13 +35,6 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
-
-	r.Get("/collect.js", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-		// 缓存时间不宜过长，便于升级后尽快下发新脚本。
-		w.Header().Set("Cache-Control", "public, max-age=300")
-		_, _ = w.Write(collectscript.JS)
 	})
 
 	r.Route("/api", func(r chi.Router) {
