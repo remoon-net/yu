@@ -21,6 +21,8 @@
 	let description = $state('');
 	let password = $state('');
 	let showCreate = $state(false);
+	let createError = $state('');
+	let creating = $state(false);
 
 	let editing = $state('');
 	let selected = $state<string[]>([]);
@@ -42,6 +44,10 @@
 	async function create(event: SubmitEvent) {
 		event.preventDefault();
 		if (!workspace) return;
+
+		creating = true;
+		createError = '';
+
 		try {
 			await statusApi.create(workspace.id, {
 				slug: pageSlug,
@@ -58,7 +64,9 @@
 			notice = '状态页已创建';
 			await load(workspace.id);
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : '创建失败';
+			createError = err instanceof ApiError ? err.message : '创建失败';
+		} finally {
+			creating = false;
 		}
 	}
 
@@ -115,7 +123,7 @@
 		<p class="small muted">对外展示服务可用性与历史事件。</p>
 	</div>
 	{#if manageable}
-		<button class="btn btn-primary" type="button" onclick={() => (showCreate = true)}>新建状态页</button>
+		<button class="btn btn-primary" type="button" onclick={() => { createError = ''; showCreate = true; }}>新建状态页</button>
 	{/if}
 </div>
 
@@ -127,13 +135,16 @@
 		<form onsubmit={create}>
 			<div class="grid-2">
 				<label class="field">名称<input class="input" bind:value={name} required maxlength={80} /></label>
-				<label class="field">Slug<input class="input" bind:value={pageSlug} required pattern={"[a-z0-9][a-z0-9-]{0,48}[a-z0-9]"} placeholder="status" /></label>
+				<label class="field">Slug<input class="input" bind:value={pageSlug} required pattern={"[a-z0-9][a-z0-9\\-]{0,48}[a-z0-9]"} placeholder="status" /></label>
 				<label class="field">描述<input class="input" bind:value={description} /></label>
 				<label class="field">访问密码（可选）<input class="input" type="password" bind:value={password} /></label>
 			</div>
+			{#if createError}<div class="error" style="margin-top: 12px">{createError}</div>{/if}
 			<div class="modal-actions">
 				<button class="btn" type="button" onclick={() => (showCreate = false)}>取消</button>
-				<button class="btn btn-primary" type="submit">创建</button>
+				<button class="btn btn-primary" type="submit" disabled={creating}>
+					{creating ? '创建中…' : '创建'}
+				</button>
 			</div>
 		</form>
 	</Modal>

@@ -38,6 +38,8 @@
 	let windowStart = $state('');
 	let windowEnd = $state('');
 	let windowMonitors = $state<string[]>([]);
+	let windowError = $state('');
+	let windowSaving = $state(false);
 
 	$effect(() => {
 		if (!workspace) return;
@@ -218,6 +220,10 @@
 	async function createWindow(event: SubmitEvent) {
 		event.preventDefault();
 		if (!workspace) return;
+
+		windowSaving = true;
+		windowError = '';
+
 		try {
 			await alertApi.createMaintenance(workspace.id, {
 				title: windowTitle,
@@ -230,7 +236,9 @@
 			notice = '维护窗口已创建';
 			await load(workspace.id);
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : '创建维护窗口失败';
+			windowError = err instanceof ApiError ? err.message : '创建维护窗口失败';
+		} finally {
+			windowSaving = false;
 		}
 	}
 
@@ -367,7 +375,7 @@
 	<div class="card">
 		<div class="card-head">
 			<h2>维护窗口</h2>
-			{#if manageable}<button class="btn btn-sm" type="button" onclick={() => (showWindow = true)}>创建维护窗口</button>{/if}
+			{#if manageable}<button class="btn btn-sm" type="button" onclick={() => { windowError = ''; showWindow = true; }}>创建维护窗口</button>{/if}
 		</div>
 		{#if windows.length === 0}
 			<p class="empty">暂无维护窗口</p>
@@ -402,9 +410,12 @@
 							</select>
 						</label>
 					</div>
+					{#if windowError}<div class="error" style="margin-top: 12px">{windowError}</div>{/if}
 					<div class="modal-actions">
 						<button class="btn" type="button" onclick={() => (showWindow = false)}>取消</button>
-						<button class="btn btn-primary" type="submit">创建维护窗口</button>
+						<button class="btn btn-primary" type="submit" disabled={windowSaving}>
+							{windowSaving ? '创建中…' : '创建维护窗口'}
+						</button>
 					</div>
 				</form>
 			</Modal>
