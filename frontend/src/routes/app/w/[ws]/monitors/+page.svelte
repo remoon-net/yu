@@ -5,6 +5,7 @@
 	import type { Monitor } from '#lib/api/types.js';
 	import Modal from '#lib/components/Modal.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
+	import { parseInterval, parseTimeout, formatInterval } from '#lib/utils/duration.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
@@ -12,6 +13,7 @@
 
 	let monitors = $state<Monitor[]>([]);
 	let error = $state('');
+	let formError = $state('');
 	let showForm = $state(false);
 	let saving = $state(false);
 
@@ -20,8 +22,8 @@
 	let target = $state('');
 	let port = $state(443);
 	let recordType = $state('A');
-	let interval = $state(60);
-	let timeout = $state(10000);
+	let interval = $state('1m');
+	let timeout = $state('10s');
 	let alertAfter = $state(2);
 	let groupName = $state('');
 
@@ -55,16 +57,28 @@
 		event.preventDefault();
 		if (!workspace) return;
 
+		const intervalSec = parseInterval(interval);
+		const timeoutMs = parseTimeout(timeout);
+
+		if (intervalSec === null || intervalSec < 10 || intervalSec > 86400) {
+			formError = '间隔格式不正确，支持 30s、1m、1h、1d（最小 10s）';
+			return;
+		}
+		if (timeoutMs === null || timeoutMs < 500 || timeoutMs > 60000) {
+			formError = '超时格式不正确，支持 500ms、10s、1m（500ms - 60s）';
+			return;
+		}
+
 		saving = true;
-		error = '';
+		formError = '';
 
 		try {
 			await monitorApi.create(workspace.id, {
 				name,
 				type,
 				config: buildConfig(),
-				interval_sec: Number(interval),
-				timeout_ms: Number(timeout),
+				interval_sec: intervalSec,
+				timeout_ms: timeoutMs,
 				alert_after: Number(alertAfter),
 				group_name: groupName
 			});
@@ -73,7 +87,7 @@
 			showForm = false;
 			await load(workspace.id);
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : '创建监控失败';
+			formError = err instanceof ApiError ? err.message : '创建监控失败';
 		} finally {
 			saving = false;
 		}
@@ -92,7 +106,7 @@
 		<p class="small muted">HTTP / TCP / Ping / DNS 周期探测。</p>
 	</div>
 	{#if manageable}
-		<button class="btn btn-primary" type="button" onclick={() => (showForm = true)}>
+		<button class="btn btn-primary" type="button" onclick={() => { formError = ''; showForm = true; }}>
 			添加监控
 		</button>
 	{/if}
@@ -127,10 +141,11 @@
 				</label>
 			{/if}
 			<label class="field">分组<input class="input" bind:value={groupName} placeholder="例如：核心服务" /></label>
-			<label class="field">间隔（秒）<input class="input" type="number" bind:value={interval} min={10} max={86400} /></label>
-			<label class="field">超时（毫秒）<input class="input" type="number" bind:value={timeout} min={500} max={60000} /></label>
+			<label class="field">间隔<input class="input" bind:value={interval} placeholder="60s / 1m / 1h" /></label>
+			<label class="field">超时<input class="input" bind:value={timeout} placeholder="500ms / 10s" /></label>
 			<label class="field">连续失败几次告警<input class="input" type="number" bind:value={alertAfter} min={1} max={10} /></label>
 		</div>
+		{#if formError}<div class="error" style="margin-top: 12px">{formError}</div>{/if}
 		<div class="modal-actions">
 			<button class="btn" type="button" onclick={() => (showForm = false)}>取消</button>
 			<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '创建中…' : '创建监控'}</button>
@@ -149,7 +164,7 @@
 					<tr>
 						<td>
 							<div>{monitor.name}</div>
-							<div class="small muted">{monitor.type} · {monitor.group_name || '未分组'} · 每 {monitor.interval_sec}s</div>
+							<div class="small muted">{monitor.type} · {monitor.group_name || '未分组'} · 每 {formatInterval(monitor.interval_sec)}</div>
 						</td>
 						<td>
 							<span class="badge" class:ok={monitor.last_status === 'up'}>{label(monitor)}</span>
@@ -157,7 +172,12 @@
 						</td>
 						<td class="num">{monitor.last_latency_ms ?? '—'} ms</td>
 						<td class="muted small">{monitor.last_checked_at ? new Date(monitor.last_checked_at).toLocaleString('zh-CN') : '—'}</td>
-						<td><a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}`}>详情</a></td>
+						<td>
+							<div class="row" style="justify-content: flex-end; flex-wrap: nowrap">
+								<a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}?edit=1`}>编辑</a>
+								<a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}`}>详情</a>
+							</div>
+						</td>
 					</tr>
 				{/each}
 			</tbody>
