@@ -3,6 +3,7 @@
 	import { ApiError } from '#lib/api/client.js';
 	import { monitorApi } from '#lib/api/monitors.js';
 	import type { Monitor } from '#lib/api/types.js';
+	import Modal from '#lib/components/Modal.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -91,16 +92,16 @@
 		<p class="small muted">HTTP / TCP / Ping / DNS 周期探测。</p>
 	</div>
 	{#if manageable}
-		<button class="btn btn-primary" type="button" onclick={() => (showForm = !showForm)}>
-			{showForm ? '取消' : '添加监控'}
+		<button class="btn btn-primary" type="button" onclick={() => (showForm = true)}>
+			添加监控
 		</button>
 	{/if}
 </div>
 
 {#if error}<div class="error" style="margin-bottom: 16px">{error}</div>{/if}
 
-{#if showForm}
-	<form class="card" onsubmit={create} style="margin-bottom: 16px">
+<Modal open={showForm} title="添加监控" onclose={() => (showForm = false)}>
+	<form onsubmit={create}>
 		<div class="grid-2">
 			<label class="field">名称<input class="input" bind:value={name} required maxlength={80} /></label>
 			<label class="field">类型
@@ -130,11 +131,12 @@
 			<label class="field">超时（毫秒）<input class="input" type="number" bind:value={timeout} min={500} max={60000} /></label>
 			<label class="field">连续失败几次告警<input class="input" type="number" bind:value={alertAfter} min={1} max={10} /></label>
 		</div>
-		<div class="row" style="margin-top: 14px">
+		<div class="modal-actions">
+			<button class="btn" type="button" onclick={() => (showForm = false)}>取消</button>
 			<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '创建中…' : '创建监控'}</button>
 		</div>
 	</form>
-{/if}
+</Modal>
 
 {#if monitors.length === 0}
 	<div class="card"><p class="empty">还没有监控项。</p></div>

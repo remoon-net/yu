@@ -3,6 +3,7 @@
 	import { ApiError } from '#lib/api/client.js';
 	import { monitorApi, statusApi } from '#lib/api/monitors.js';
 	import type { Monitor, StatusPage } from '#lib/api/types.js';
+	import Modal from '#lib/components/Modal.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -18,6 +19,7 @@
 	let pageSlug = $state('');
 	let description = $state('');
 	let password = $state('');
+	let showCreate = $state(false);
 
 	let editing = $state('');
 	let selected = $state<string[]>([]);
@@ -51,6 +53,7 @@
 			pageSlug = '';
 			description = '';
 			password = '';
+			showCreate = false;
 			notice = '状态页已创建';
 			await load(workspace.id);
 		} catch (err) {
@@ -104,22 +107,29 @@
 		<h1>状态页</h1>
 		<p class="small muted">对外展示服务可用性与历史事件。</p>
 	</div>
+	{#if manageable}
+		<button class="btn btn-primary" type="button" onclick={() => (showCreate = true)}>新建状态页</button>
+	{/if}
 </div>
 
 {#if error}<div class="error" style="margin-bottom: 16px">{error}</div>{/if}
 {#if notice}<div class="badge ok" style="margin-bottom: 16px">{notice}</div>{/if}
 
 {#if manageable}
-	<form class="card" onsubmit={create} style="margin-bottom: 16px">
-		<div class="card-head"><h2>新建状态页</h2></div>
-		<div class="grid-2">
-			<label class="field">名称<input class="input" bind:value={name} required maxlength={80} /></label>
-			<label class="field">Slug<input class="input" bind:value={pageSlug} required pattern={"[a-z0-9][a-z0-9-]{0,48}[a-z0-9]"} placeholder="status" /></label>
-			<label class="field">描述<input class="input" bind:value={description} /></label>
-			<label class="field">访问密码（可选）<input class="input" type="password" bind:value={password} /></label>
-		</div>
-		<div class="row" style="margin-top: 12px"><button class="btn btn-primary" type="submit">创建</button></div>
-	</form>
+	<Modal open={showCreate} title="新建状态页" onclose={() => (showCreate = false)}>
+		<form onsubmit={create}>
+			<div class="grid-2">
+				<label class="field">名称<input class="input" bind:value={name} required maxlength={80} /></label>
+				<label class="field">Slug<input class="input" bind:value={pageSlug} required pattern={"[a-z0-9][a-z0-9-]{0,48}[a-z0-9]"} placeholder="status" /></label>
+				<label class="field">描述<input class="input" bind:value={description} /></label>
+				<label class="field">访问密码（可选）<input class="input" type="password" bind:value={password} /></label>
+			</div>
+			<div class="modal-actions">
+				<button class="btn" type="button" onclick={() => (showCreate = false)}>取消</button>
+				<button class="btn btn-primary" type="submit">创建</button>
+			</div>
+		</form>
+	</Modal>
 {/if}
 
 {#each pages as pageItem (pageItem.id)}

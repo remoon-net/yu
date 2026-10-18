@@ -3,6 +3,7 @@
 	import { ApiError, api } from '#lib/api/client.js';
 	import { alertApi, monitorApi } from '#lib/api/monitors.js';
 	import type { Channel, Incident, MaintenanceWindow, Monitor } from '#lib/api/types.js';
+	import Modal from '#lib/components/Modal.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -15,6 +16,8 @@
 	let monitors = $state<Monitor[]>([]);
 	let error = $state('');
 	let notice = $state('');
+	let showChannel = $state(false);
+	let showWindow = $state(false);
 
 	let channelType = $state('webhook');
 	let channelName = $state('');
@@ -74,6 +77,7 @@
 			smtpPass = '';
 			smtpFrom = '';
 			smtpTo = '';
+			showChannel = false;
 			notice = '渠道已创建';
 			await load(workspace.id);
 		} catch (err) {
@@ -122,6 +126,7 @@
 				ends_at: new Date(windowEnd).toISOString()
 			});
 			windowTitle = '';
+			showWindow = false;
 			notice = '维护窗口已创建';
 			await load(workspace.id);
 		} catch (err) {
@@ -148,7 +153,10 @@
 
 <div class="stack">
 	<div class="card">
-		<div class="card-head"><h2>通知渠道</h2></div>
+		<div class="card-head">
+			<h2>通知渠道</h2>
+			{#if manageable}<button class="btn btn-sm" type="button" onclick={() => (showChannel = true)}>添加渠道</button>{/if}
+		</div>
 		{#if channels.length === 0}
 			<p class="empty">尚未配置通知渠道</p>
 		{:else}
@@ -171,28 +179,33 @@
 		{/if}
 
 		{#if manageable}
-			<form onsubmit={createChannel} style="margin-top: 16px">
-				<div class="grid-2">
-					<label class="field">名称<input class="input" bind:value={channelName} required /></label>
-					<label class="field">类型
-						<select class="select" bind:value={channelType}>
-							<option value="webhook">Webhook</option>
-							<option value="smtp">邮件</option>
-						</select>
-					</label>
-					{#if channelType === 'webhook'}
-						<label class="field">Webhook 地址<input class="input" bind:value={channelTarget} required placeholder="https://hooks.example.com/yu" /></label>
-					{:else}
-						<label class="field">SMTP 主机<input class="input" bind:value={smtpHost} placeholder="smtp.example.com" /></label>
-						<label class="field">端口<input class="input" type="number" bind:value={smtpPort} min={1} max={65535} /></label>
-						<label class="field">用户名<input class="input" bind:value={smtpUser} placeholder="可选" autocomplete="off" /></label>
-						<label class="field">密码 / 授权码<input class="input" type="password" bind:value={smtpPass} autocomplete="new-password" /></label>
-						<label class="field">发件人<input class="input" bind:value={smtpFrom} placeholder="Yu &lt;no-reply@example.com&gt;" /></label>
-						<label class="field">收件人（逗号分隔）<input class="input" bind:value={smtpTo} required placeholder="a@example.com, b@example.com" /></label>
-					{/if}
-				</div>
-				<div class="row" style="margin-top: 12px"><button class="btn btn-primary" type="submit">添加渠道</button></div>
-			</form>
+			<Modal open={showChannel} title="添加通知渠道" onclose={() => (showChannel = false)}>
+				<form onsubmit={createChannel}>
+					<div class="grid-2">
+						<label class="field">名称<input class="input" bind:value={channelName} required /></label>
+						<label class="field">类型
+							<select class="select" bind:value={channelType}>
+								<option value="webhook">Webhook</option>
+								<option value="smtp">邮件</option>
+							</select>
+						</label>
+						{#if channelType === 'webhook'}
+							<label class="field">Webhook 地址<input class="input" bind:value={channelTarget} required placeholder="https://hooks.example.com/yu" /></label>
+						{:else}
+							<label class="field">SMTP 主机<input class="input" bind:value={smtpHost} placeholder="smtp.example.com" /></label>
+							<label class="field">端口<input class="input" type="number" bind:value={smtpPort} min={1} max={65535} /></label>
+							<label class="field">用户名<input class="input" bind:value={smtpUser} placeholder="可选" autocomplete="off" /></label>
+							<label class="field">密码 / 授权码<input class="input" type="password" bind:value={smtpPass} autocomplete="new-password" /></label>
+							<label class="field">发件人<input class="input" bind:value={smtpFrom} placeholder="Yu &lt;no-reply@example.com&gt;" /></label>
+							<label class="field">收件人（逗号分隔）<input class="input" bind:value={smtpTo} required placeholder="a@example.com, b@example.com" /></label>
+						{/if}
+					</div>
+					<div class="modal-actions">
+						<button class="btn" type="button" onclick={() => (showChannel = false)}>取消</button>
+						<button class="btn btn-primary" type="submit">添加渠道</button>
+					</div>
+				</form>
+			</Modal>
 		{/if}
 	</div>
 
@@ -223,7 +236,10 @@
 	</div>
 
 	<div class="card">
-		<div class="card-head"><h2>维护窗口</h2></div>
+		<div class="card-head">
+			<h2>维护窗口</h2>
+			{#if manageable}<button class="btn btn-sm" type="button" onclick={() => (showWindow = true)}>创建维护窗口</button>{/if}
+		</div>
 		{#if windows.length === 0}
 			<p class="empty">暂无维护窗口</p>
 		{:else}
@@ -245,19 +261,24 @@
 		{/if}
 
 		{#if manageable}
-			<form onsubmit={createWindow} style="margin-top: 16px">
-				<div class="grid-2">
-					<label class="field">标题<input class="input" bind:value={windowTitle} required /></label>
-					<label class="field">开始<input class="input" type="datetime-local" bind:value={windowStart} required /></label>
-					<label class="field">结束<input class="input" type="datetime-local" bind:value={windowEnd} required /></label>
-					<label class="field">监控（不选表示全部）
-						<select class="select" multiple bind:value={windowMonitors} style="min-height: 90px">
-							{#each monitors as monitor (monitor.id)}<option value={monitor.id}>{monitor.name}</option>{/each}
-						</select>
-					</label>
-				</div>
-				<div class="row" style="margin-top: 12px"><button class="btn btn-primary" type="submit">创建维护窗口</button></div>
-			</form>
+			<Modal open={showWindow} title="创建维护窗口" onclose={() => (showWindow = false)}>
+				<form onsubmit={createWindow}>
+					<div class="grid-2">
+						<label class="field">标题<input class="input" bind:value={windowTitle} required /></label>
+						<label class="field">开始<input class="input" type="datetime-local" bind:value={windowStart} required /></label>
+						<label class="field">结束<input class="input" type="datetime-local" bind:value={windowEnd} required /></label>
+						<label class="field">监控（不选表示全部）
+							<select class="select" multiple bind:value={windowMonitors} style="min-height: 90px">
+								{#each monitors as monitor (monitor.id)}<option value={monitor.id}>{monitor.name}</option>{/each}
+							</select>
+						</label>
+					</div>
+					<div class="modal-actions">
+						<button class="btn" type="button" onclick={() => (showWindow = false)}>取消</button>
+						<button class="btn btn-primary" type="submit">创建维护窗口</button>
+					</div>
+				</form>
+			</Modal>
 		{/if}
 	</div>
 </div>

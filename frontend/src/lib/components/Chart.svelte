@@ -38,7 +38,7 @@
 
 		const currentTheme = theme;
 		chart = echarts.init(el, currentTheme === 'light' ? undefined : 'dark');
-		chart.setOption(untrack(() => option), true);
+		chart.setOption({ backgroundColor: 'transparent', ...untrack(() => option) }, true);
 
 		const observer = new ResizeObserver(() => chart?.resize());
 		observer.observe(el);
@@ -51,7 +51,7 @@
 	});
 
 	$effect(() => {
-		chart?.setOption(option, true);
+		chart?.setOption({ backgroundColor: 'transparent', ...option }, true);
 	});
 </script>
 
