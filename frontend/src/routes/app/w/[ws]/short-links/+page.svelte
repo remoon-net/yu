@@ -159,15 +159,25 @@
 
 	async function remove(link: ShortLink) {
 		if (!workspace || !siteId) return;
+
+		// 从编辑弹窗触发时，先关闭编辑弹窗再弹确认，取消可返回。
+		const fromForm = editing?.id === link.id;
+		if (fromForm) showForm = false;
+
 		const ok = await confirmDialog({
 			title: '删除短链',
 			message: `确定删除短链「${link.slug}」？删除后该链接立即失效。`,
 			confirmText: '删除'
 		});
-		if (!ok) return;
+
+		if (!ok) {
+			if (fromForm) showForm = true;
+			return;
+		}
 
 		try {
 			await shortLinkApi.remove(workspace.id, siteId, link.id);
+			editing = null;
 			notice = '短链已删除';
 			await loadLinks(workspace.id, siteId);
 		} catch (err) {
@@ -338,17 +348,6 @@
 										<path d="M14 6l4 4" />
 									</svg>
 								</button>
-								<button
-									class="icon-btn danger"
-									type="button"
-									title="删除"
-									aria-label="删除"
-									onclick={() => remove(link)}
-								>
-									<svg viewBox="0 0 24 24" aria-hidden="true">
-										<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-									</svg>
-								</button>
 							{/if}
 							</div>
 						</td>
@@ -388,6 +387,16 @@
 		</label>
 		{#if formError}<div class="error" style="margin-top: 12px">{formError}</div>{/if}
 		<div class="modal-actions">
+			{#if editing}
+				<button
+					class="btn btn-danger"
+					type="button"
+					style="margin-right: auto"
+					onclick={() => remove(editing!)}
+				>
+					删除短链
+				</button>
+			{/if}
 			<button class="btn" type="button" onclick={() => (showForm = false)}>取消</button>
 			<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '保存中…' : '保存'}</button>
 		</div>
@@ -534,12 +543,6 @@
 		color: var(--text);
 		border-color: var(--border-strong);
 		background: var(--panel-2);
-	}
-
-	.icon-btn.danger:hover {
-		color: var(--danger);
-		border-color: var(--danger);
-		background: var(--danger-soft);
 	}
 
 	.icon-btn svg {

@@ -146,12 +146,22 @@
 
 	async function remove(pageItem: StatusPage) {
 		if (!workspace) return;
+
+		// 从编辑弹窗触发时，先关闭编辑弹窗再弹确认，取消可返回。
+		const fromForm = editTarget?.id === pageItem.id;
+		if (fromForm) editTarget = null;
+
 		const ok = await confirmDialog({
 			title: '删除状态页',
 			message: `确定删除状态页「${pageItem.name}」？公开链接会立即失效。`,
 			confirmText: '删除'
 		});
-		if (!ok) return;
+
+		if (!ok) {
+			if (fromForm) editTarget = pageItem;
+			return;
+		}
+
 		await statusApi.remove(workspace.id, pageItem.id);
 		await load(workspace.id);
 	}
@@ -208,7 +218,6 @@
 				{#if manageable}
 					<button class="btn btn-sm" type="button" onclick={() => openEditPage(pageItem)}>编辑</button>
 					<button class="btn btn-sm" type="button" onclick={() => edit(pageItem)}>{editing === pageItem.id ? '收起组件' : '监控组件'}</button>
-					<button class="btn btn-sm btn-danger" type="button" onclick={() => remove(pageItem)}>删除</button>
 				{/if}
 			</div>
 		</div>
@@ -277,6 +286,16 @@
 		{/if}
 		{#if editError}<div class="error" style="margin-top: 12px">{editError}</div>{/if}
 		<div class="modal-actions">
+			{#if editTarget}
+				<button
+					class="btn btn-danger"
+					type="button"
+					style="margin-right: auto"
+					onclick={() => remove(editTarget!)}
+				>
+					删除状态页
+				</button>
+			{/if}
 			<button class="btn" type="button" onclick={() => (editTarget = null)}>取消</button>
 			<button class="btn btn-primary" type="submit" disabled={savingEdit}>
 				{savingEdit ? '保存中…' : '保存'}

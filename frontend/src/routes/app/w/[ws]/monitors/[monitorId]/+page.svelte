@@ -222,14 +222,22 @@
 
 	async function remove() {
 		if (!workspace || !monitor) return;
-		if (
-			!(await confirmDialog({
-				title: '删除监控',
-				message: `确定删除监控「${monitor.name}」？历史检测记录会一并删除。`,
-				confirmText: '删除'
-			}))
-		)
+
+		// 从编辑弹窗触发时，先关闭编辑弹窗再弹确认，取消可返回。
+		const fromForm = showEdit;
+		if (fromForm) showEdit = false;
+
+		const ok = await confirmDialog({
+			title: '删除监控',
+			message: `确定删除监控「${monitor.name}」？历史检测记录会一并删除。`,
+			confirmText: '删除'
+		});
+
+		if (!ok) {
+			if (fromForm) showEdit = true;
 			return;
+		}
+
 		try {
 			await monitorApi.remove(workspace.id, monitor.id);
 			await goto(`/app/w/${slug}/monitors/`);
@@ -253,7 +261,6 @@
 			{:else}
 				<button class="btn btn-sm" type="button" onclick={mute}>静默 60 分钟</button>
 			{/if}
-			<button class="btn btn-sm btn-danger" type="button" onclick={remove}>删除</button>
 		{/if}
 	</div>
 </div>
@@ -297,6 +304,9 @@
 			</label>
 			{#if editError}<div class="error" style="margin-top: 12px">{editError}</div>{/if}
 			<div class="modal-actions">
+				<button class="btn btn-danger" type="button" style="margin-right: auto" onclick={remove}>
+					删除监控
+				</button>
 				<button class="btn" type="button" onclick={() => (showEdit = false)}>取消</button>
 				<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '保存中…' : '保存'}</button>
 			</div>
