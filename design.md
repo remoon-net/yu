@@ -226,7 +226,30 @@ site_stats_daily (
 )
 ```
 
-### 6.3 服务监控
+### 6.3 短链追踪
+
+短链绑定到某个站点，点击作为 `events.type = 'link_click'` 写入，复用现有统计与事件面板；短链点击不计入站点 PV。
+
+```sql
+short_links (
+  id uuid pk,
+  workspace_id uuid fk,
+  site_id uuid fk,
+  slug text unique,               -- 默认随机 8 位 base62，也可自定义
+  target_url text not null,
+  title text,
+  enabled boolean default true,
+  expires_at timestamptz,         -- 可空
+  created_at timestamptz default now()
+)
+
+create index on short_links (site_id);
+```
+
+跳转流程：`GET /s/{slug}` → 校验启用与过期 → 合并 query（UTM 透传）→ 302 到目标地址 → 异步写入一条 `link_click` 事件（`name` = slug、`path` = `/s/{slug}`、`url` = 最终地址）。访客标识用 `sha256(ip + UA)`，会话标识为「访客标识 + 日期」，避免依赖采集脚本的 localStorage。过期或停用返回 410 页面。
+
+
+### 6.4 服务监控
 
 ```sql
 monitors (
@@ -300,7 +323,7 @@ status_page_items (
 )
 ```
 
-### 6.4 监控配置 jsonb 结构
+### 6.5 监控配置 jsonb 结构
 
 ```jsonc
 // http
@@ -504,6 +527,15 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 | POST | `/api/public/status/:slug/unlock` | 密码校验 |
 | GET | `/api/public/share/:token` | 公开统计看板数据 |
 
+### 9.6 短链
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET/POST | `/api/workspaces/:ws/sites/:site/short-links` | 短链列表 / 创建 |
+| PATCH/DELETE | `/api/workspaces/:ws/sites/:site/short-links/:id` | 编辑 / 删除 |
+| GET | `.../short-links/stats` | 每个短链的点击量、UV、最近点击 |
+| GET | `/s/:slug` | 公开跳转（302），异步记录 click |
+
 ## 10. 前端设计
 
 ### 10.1 路由
@@ -520,9 +552,11 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 /app/w/[ws]/alerts                      -> 告警渠道
 /app/w/[ws]/incidents                   -> 事件与维护
 /app/w/[ws]/status-pages                -> 状态页管理
+/app/w/[ws]/short-links                 -> 短链管理（含二维码）
 /app/w/[ws]/settings                    -> 工作区设置（成员、API Key）
 /status/[slug]                          -> 公开状态页
 /share/[token]                          -> 公开看板
+/s/[slug]                               -> 短链跳转（Go 直出，需反代）
 ```
 
 SPA 使用 `adapter-static` + `fallback: 'index.html'`，所有路由由前端接管；Caddy 对 `/api/*` 反代到 Go，其他路径回退 `index.html`。

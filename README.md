@@ -70,6 +70,10 @@ yu.example.com {
     handle /api/* {
         reverse_proxy 127.0.0.1:8080
     }
+    # 短链跳转由 Go 处理
+    handle /s/* {
+        reverse_proxy 127.0.0.1:8080
+    }
     handle {
         root * /var/www/yu
         try_files {path} /index.html
@@ -130,6 +134,14 @@ SvelteKit 也可以放在根布局里，让每次导航结束后补报一次（�
 ```js
 window.yu.event('signup', { plan: 'pro' });
 ```
+
+## 短链追踪
+
+工作区「短链」页可创建 `https://你的域名/s/<标识>`，点击会记录到对应站点的 `events`（`type=link_click`），带访问量 / 独立访客 / 最近点击统计，支持过期时间、启用停用与二维码。
+
+- 短链必须归属一个站点，点击不计入站点 PV
+- 访问时会把原链接的 query 参数（含 UTM）拼接到目标地址后跳转
+- 过期或停用返回 410 页面
 
 ## 邮件通知
 

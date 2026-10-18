@@ -6,6 +6,8 @@ import type {
 	Monitor,
 	MonitorCheck,
 	MonitorStatsResponse,
+	ShortLink,
+	ShortLinksResponse,
 	StatusPage,
 	StatusPageItem
 } from '#lib/api/types.js';
@@ -94,5 +96,20 @@ export const statusApi = {
 	},
 	putItems(workspaceId: string, pageId: string, items: unknown): Promise<void> {
 		return api.put(`${base(workspaceId)}/status-pages/${pageId}/items`, { items });
+	}
+};
+
+export const shortLinkApi = {
+	list(workspaceId: string, siteId: string): Promise<ShortLinksResponse> {
+		return api.get<ShortLinksResponse>(`${base(workspaceId)}/sites/${siteId}/short-links`);
+	},
+	create(workspaceId: string, siteId: string, body: unknown): Promise<ShortLink> {
+		return api.post<ShortLink>(`${base(workspaceId)}/sites/${siteId}/short-links`, body);
+	},
+	update(workspaceId: string, siteId: string, linkId: string, body: unknown): Promise<ShortLink> {
+		return api.patch<ShortLink>(`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}`, body);
+	},
+	remove(workspaceId: string, siteId: string, linkId: string): Promise<void> {
+		return api.delete(`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}`);
 	}
 };

@@ -245,6 +245,30 @@ export interface MaintenanceWindow {
 	ends_at: string;
 }
 
+export interface ShortLink {
+	id: string;
+	workspace_id: string;
+	site_id: string;
+	slug: string;
+	target_url: string;
+	title: string;
+	enabled: boolean;
+	expires_at: string | null;
+	created_at: string;
+}
+
+export interface ShortLinkStats {
+	slug: string;
+	clicks: number;
+	visitors: number;
+	last_click: string | null;
+}
+
+export interface ShortLinksResponse {
+	links: ShortLink[];
+	stats: ShortLinkStats[] | null;
+}
+
 export interface StatusPage {
 	id: string;
 	slug: string;

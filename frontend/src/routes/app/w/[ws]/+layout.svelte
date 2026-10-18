@@ -130,6 +130,11 @@
 				>
 				<a
 					class="nav-item"
+					class:active={page.url.pathname.includes('/short-links')}
+					href={`/app/w/${workspace.slug}/short-links/`}>短链</a
+				>
+				<a
+					class="nav-item"
 					class:active={page.url.pathname.includes('/sites')}
 					href={`/app/w/${workspace.slug}/sites/`}>站点设置</a
 				>

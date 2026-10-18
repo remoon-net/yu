@@ -37,6 +37,9 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
+	// 公开短链跳转（由 Caddy 将 /s/* 反代到本服务）
+	r.Get("/s/{slug}", s.handleShortLinkRedirect)
+
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/login", s.handleLogin)
 		r.Post("/auth/logout", s.handleLogout)
@@ -81,6 +84,11 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 					r.Get("/sites/{siteID}/stats/events", s.handleStatsEvents)
 					r.Get("/sites/{siteID}/stats/events/{name}", s.handleStatsEventDetail)
 					r.Post("/sites/{siteID}/share-password", s.handleSetSharePassword)
+
+					r.Get("/sites/{siteID}/short-links", s.handleListShortLinks)
+					r.Post("/sites/{siteID}/short-links", s.handleCreateShortLink)
+					r.Patch("/sites/{siteID}/short-links/{linkID}", s.handleUpdateShortLink)
+					r.Delete("/sites/{siteID}/short-links/{linkID}", s.handleDeleteShortLink)
 
 					r.Get("/monitors", s.handleListMonitors)
 					r.Post("/monitors", s.handleCreateMonitor)
