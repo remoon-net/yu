@@ -110,6 +110,21 @@ func (s *Store) SetMuted(ctx context.Context, monitorID uuid.UUID, until *time.T
 	return err
 }
 
+// GetMutedUntil 返回监控的静默截止时间，未静默时返回 nil。
+func (s *Store) GetMutedUntil(ctx context.Context, monitorID uuid.UUID) (*time.Time, error) {
+	var until *time.Time
+	err := s.Pool.QueryRow(ctx, `
+		select muted_until from alert_states where monitor_id = $1`, monitorID,
+	).Scan(&until)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return until, nil
+}
+
 // ListChannels 返回工作区的通知渠道。
 func (s *Store) ListChannels(ctx context.Context, workspaceID uuid.UUID) ([]NotificationChannel, error) {
 	rows, err := s.Pool.Query(ctx, `

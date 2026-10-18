@@ -30,6 +30,7 @@ type Monitor struct {
 	LastCheckedAt *time.Time      `json:"last_checked_at"`
 	LastLatencyMS *int            `json:"last_latency_ms"`
 	LastError     string          `json:"last_error"`
+	MutedUntil    *time.Time      `json:"muted_until"`
 	CreatedAt     time.Time       `json:"created_at"`
 }
 

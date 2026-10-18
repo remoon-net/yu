@@ -175,6 +175,7 @@ export interface Monitor {
 	last_checked_at: string | null;
 	last_latency_ms: number | null;
 	last_error: string;
+	muted_until?: string | null;
 	created_at: string;
 }
 

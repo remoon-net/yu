@@ -99,6 +99,12 @@ func (s *Server) handleGetMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mutedUntil, err := s.store.GetMutedUntil(r.Context(), monitor.ID)
+	if err != nil {
+		slog.Warn("读取静默状态失败", "err", err, "monitor", monitor.ID)
+	}
+	monitor.MutedUntil = mutedUntil
+
 	writeJSON(w, http.StatusOK, monitor)
 }
 

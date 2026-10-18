@@ -2,6 +2,7 @@
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { EChartsCoreOption } from 'echarts/core';
+	import { DateTime } from 'luxon';
 	import { ApiError } from '#lib/api/client.js';
 	import { monitorApi } from '#lib/api/monitors.js';
 	import type { Monitor, MonitorCheck, MonitorStatsResponse } from '#lib/api/types.js';
@@ -18,6 +19,11 @@
 	const workspace = $derived(session.findWorkspace(slug));
 
 	let monitor = $state<Monitor | null>(null);
+	const mutedUntil = $derived(
+		monitor?.muted_until ? DateTime.fromISO(monitor.muted_until) : null
+	);
+	const isMuted = $derived(!!mutedUntil && mutedUntil > DateTime.now());
+
 	let data = $state<MonitorStatsResponse | null>(null);
 	let checks = $state<MonitorCheck[]>([]);
 	let range = $state('24h');
@@ -111,9 +117,21 @@
 		if (!workspace || !monitor) return;
 		try {
 			await monitorApi.mute(workspace.id, monitor.id, 60);
+			monitor = { ...monitor, muted_until: new Date(Date.now() + 60 * 60 * 1000).toISOString() };
 			notice = '已静默 60 分钟';
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '静默失败';
+		}
+	}
+
+	async function unmute() {
+		if (!workspace || !monitor) return;
+		try {
+			await monitorApi.mute(workspace.id, monitor.id, 0);
+			monitor = { ...monitor, muted_until: null };
+			notice = '已取消静默';
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '取消静默失败';
 		}
 	}
 
@@ -220,13 +238,20 @@
 	<div class="row">
 		<RangePicker bind:value={range} />
 		<button class="btn btn-sm" type="button" onclick={openEdit}>编辑</button>
-		<button class="btn btn-sm" type="button" onclick={mute}>静默 60 分钟</button>
+		{#if isMuted}
+			<button class="btn btn-sm" type="button" onclick={unmute}>取消静默</button>
+		{:else}
+			<button class="btn btn-sm" type="button" onclick={mute}>静默 60 分钟</button>
+		{/if}
 		<button class="btn btn-sm btn-danger" type="button" onclick={remove}>删除</button>
 	</div>
 </div>
 
 {#if error}<div class="error" style="margin-bottom: 16px">{error}</div>{/if}
 {#if notice}<div class="badge ok" style="margin-bottom: 16px">{notice}</div>{/if}
+{#if isMuted && mutedUntil}
+	<div class="badge" style="margin-bottom: 16px">静默中 · 至 {mutedUntil.toFormat('MM-dd HH:mm')}，期间不发送任何告警通知</div>
+{/if}
 
 {#if monitor}
 	<Modal open={showEdit} title="编辑监控" onclose={() => (showEdit = false)}>
