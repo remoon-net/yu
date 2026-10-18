@@ -13,6 +13,7 @@ import (
 	"remoon.net/yu/backend/internal/config"
 	"remoon.net/yu/backend/internal/httpapi"
 	"remoon.net/yu/backend/internal/mailer"
+	"remoon.net/yu/backend/internal/monitor"
 	"remoon.net/yu/backend/internal/store"
 )
 
@@ -42,6 +43,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := st.EnsureMonitorCheckPartitions(ctx, 2); err != nil {
+		slog.Error("创建监控结果分区失败", "err", err)
+		os.Exit(1)
+	}
+
 	if removed, err := st.DeleteExpiredSessions(ctx); err != nil {
 		slog.Warn("清理过期会话失败", "err", err)
 	} else if removed > 0 {
@@ -59,6 +65,9 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+
+	scheduler := monitor.NewScheduler(st, cfg.ProbeConcurrency)
+	go scheduler.Run(ctx)
 
 	go func() {
 		slog.Info("HTTP 服务已启动", "addr", cfg.Addr)

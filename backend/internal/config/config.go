@@ -23,6 +23,7 @@ type Config struct {
 	BootstrapEmail     string
 	BootstrapPassword  string
 	BootstrapWorkspace string
+	ProbeConcurrency   int
 }
 
 // Load 从环境变量读取配置并填充默认值。
@@ -41,6 +42,7 @@ func Load() Config {
 		BootstrapEmail:     env("YU_BOOTSTRAP_EMAIL", ""),
 		BootstrapPassword:  env("YU_BOOTSTRAP_PASSWORD", ""),
 		BootstrapWorkspace: env("YU_BOOTSTRAP_WORKSPACE", "默认工作区"),
+		ProbeConcurrency:   envInt("YU_PROBE_CONCURRENCY", 32),
 	}
 
 	for _, origin := range strings.Split(env("YU_ALLOWED_ORIGINS", ""), ",") {

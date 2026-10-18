@@ -8,6 +8,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/mileusna/useragent v1.3.5
 	golang.org/x/crypto v0.58.0
+	golang.org/x/net v0.60.0
 )
 
 require (
