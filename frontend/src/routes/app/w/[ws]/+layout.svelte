@@ -43,10 +43,18 @@
 		}
 	}
 
+	// 工作区可能已在别处被删除：先刷新一次会话再判断，避免停留在失效路径上。
+	let reloadingWorkspace = false;
+
 	$effect(() => {
-		if (session.loaded && !workspace) {
-			void goto('/app/', { replace: true });
-		}
+		if (!session.loaded || workspace) return;
+		if (reloadingWorkspace) return;
+
+		reloadingWorkspace = true;
+		void session.load(true).finally(() => {
+			reloadingWorkspace = false;
+			if (!session.findWorkspace(slug)) void goto('/app/', { replace: true });
+		});
 	});
 
 	function switchWorkspace(event: Event) {
