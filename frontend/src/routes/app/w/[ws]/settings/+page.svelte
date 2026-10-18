@@ -72,8 +72,7 @@
 		}
 	}
 
-	async function deleteKey(key: APIKey) {
-		if (!workspace) return;
+	async function deleteKey(key: APIKey) {		if (!workspace) return;
 		const ok = await confirmDialog({
 			title: '删除 API Key',
 			message: `确定删除 API Key「${key.name}」？使用该 Key 的集成会立即失效。`,
@@ -151,7 +150,8 @@
 		}
 	}
 
-	async function removeMember(member: Member) {		if (!workspace) return;
+	async function removeMember(member: Member) {
+		if (!workspace) return;
 		const ok = await confirmDialog({
 			title: '移除成员',
 			message: `确定将 ${member.email} 移出工作区？`,
@@ -168,6 +168,28 @@
 			notice = '成员已移除';
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '移除成员失败';
+		}
+	}
+
+	async function deleteInvite(item: Invite) {
+		if (!workspace) return;
+
+		const ok = await confirmDialog({
+			title: '撤销邀请',
+			message: `确定撤销发给 ${item.email} 的邀请？该链接会立即失效。`,
+			confirmText: '撤销'
+		});
+		if (!ok) return;
+
+		error = '';
+		notice = '';
+
+		try {
+			await api.delete(`/api/workspaces/${workspace.id}/invites/${item.id}`);
+			await loadAll(workspace.id);
+			notice = '邀请已撤销';
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '撤销邀请失败';
 		}
 	}
 
@@ -301,6 +323,7 @@
 							<th>邮箱</th>
 							<th>角色</th>
 							<th>过期时间</th>
+							<th class="num"></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -309,6 +332,11 @@
 								<td>{item.email}</td>
 								<td>{roleLabel(item.role)}</td>
 								<td class="muted">{new Date(item.expires_at).toLocaleString('zh-CN')}</td>
+								<td class="num">
+									{#if manageable}
+										<button class="btn btn-sm btn-danger" type="button" onclick={() => deleteInvite(item)}>撤销</button>
+									{/if}
+								</td>
 							</tr>
 						{/each}
 					</tbody>

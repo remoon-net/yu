@@ -65,6 +65,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 					r.Get("/invites", s.handleListInvites)
 					r.Post("/invites", s.handleCreateInvite)
+					r.Delete("/invites/{inviteID}", s.handleDeleteInvite)
 
 					r.Get("/sites", s.handleListSites)
 					r.Post("/sites", s.handleCreateSite)

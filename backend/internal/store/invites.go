@@ -79,6 +79,20 @@ func (s *Store) ListPendingInvites(ctx context.Context, workspaceID uuid.UUID) (
 	return list, rows.Err()
 }
 
+// DeleteInvite 撤销尚未接受的邀请，使链接立即失效。
+func (s *Store) DeleteInvite(ctx context.Context, workspaceID, inviteID uuid.UUID) error {
+	tag, err := s.Pool.Exec(ctx, `
+		delete from invites
+		where id = $1 and workspace_id = $2 and accepted_at is null`, inviteID, workspaceID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // AcceptInvite 接受邀请：必要时创建用户，加入工作区，并标记邀请已使用。
 func (s *Store) AcceptInvite(ctx context.Context, inviteID uuid.UUID, email, name, passwordHash string) (*User, error) {
 	var user *User

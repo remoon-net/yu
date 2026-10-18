@@ -347,6 +347,31 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleDeleteInvite(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := s.workspaceAccess(w, r, "admin")
+	if !ok {
+		return
+	}
+
+	inviteID, err := uuid.Parse(chi.URLParam(r, "inviteID"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "邀请不存在")
+		return
+	}
+
+	if err := s.store.DeleteInvite(r.Context(), ws.ID, inviteID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "邀请不存在或已接受")
+			return
+		}
+		slog.Error("删除邀请失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "删除邀请失败")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) sendInviteEmail(ctx context.Context, workspaceID uuid.UUID, to, workspaceName, link string) bool {
 	channels, err := s.store.ListChannels(ctx, workspaceID)
 	if err != nil {
