@@ -200,8 +200,8 @@
 
 <div class="page-head">
 	<div>
-		<h1>遥测像素</h1>
-		<p class="small muted">用于无法注入采集脚本的页面：嵌入 1×1 透明图，每次加载记录一次曝光。</p>
+		<h1>遥测</h1>
+		<p class="small muted">通过 1×1 透明像素上报曝光，适用于无法注入采集脚本的页面。</p>
 	</div>
 	<div class="row">
 		{#if sites.length > 1}

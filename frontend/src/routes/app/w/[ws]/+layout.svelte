@@ -136,7 +136,7 @@
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/pixels')}
-					href={`/app/w/${workspace.slug}/pixels/`}>遥测像素</a
+					href={`/app/w/${workspace.slug}/pixels/`}>遥测</a
 				>
 				<a
 					class="nav-item"

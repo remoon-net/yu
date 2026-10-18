@@ -162,7 +162,7 @@ delete from events where type = 'link_click' and name like 'demo-%';
 delete from short_links where slug like 'demo-%';
 ```
 
-## 遥测像素
+## 遥测（像素上报）
 
 用于**无法注入 `collect.js`** 的页面：第三方平台文章、README、邮件、落地页。嵌入一张 1×1 透明图，页面加载时记录一次曝光到对应站点的 `events`（`type=pixel`）。
 
