@@ -304,7 +304,7 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := s.cfg.PublicBaseURL + "/invite/" + token
+	link := s.cfg.PublicBaseURL + "/invite/" + token + "/"
 	emailSent := s.sendInviteEmail(r.Context(), ws.ID, invite.Email, ws.Name, link)
 
 	writeJSON(w, http.StatusCreated, map[string]any{

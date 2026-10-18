@@ -12,7 +12,7 @@
 
 	$effect(() => {
 		if (session.loaded && !session.user) {
-			void goto('/login', { replace: true });
+			void goto('/login/', { replace: true });
 		}
 	});
 </script>

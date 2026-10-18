@@ -27,7 +27,7 @@ func (s *Server) siteResponse(site *store.Site) siteResponse {
 		Site:           site,
 		ScriptURL:      base + "/collect.js",
 		Endpoint:       base + "/api/collect",
-		ShareURL:       base + "/share/" + site.ShareToken,
+		ShareURL:       base + "/share/" + site.ShareToken + "/",
 		InstallSnippet: `<script defer src="` + base + `/collect.js" data-token="` + site.Token + `"></script>`,
 	}
 }

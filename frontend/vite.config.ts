@@ -12,8 +12,7 @@ export default defineConfig({
 	],
 	server: {
 		proxy: {
-			'/api': { target: apiTarget, changeOrigin: false },
-			'/collect.js': { target: apiTarget, changeOrigin: false }
+			'/api': { target: apiTarget, changeOrigin: false }
 		}
 	}
 });

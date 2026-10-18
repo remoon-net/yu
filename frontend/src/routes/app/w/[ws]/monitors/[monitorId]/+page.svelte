@@ -231,7 +231,7 @@
 			return;
 		try {
 			await monitorApi.remove(workspace.id, monitor.id);
-			await goto(`/app/w/${slug}/monitors`);
+			await goto(`/app/w/${slug}/monitors/`);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '删除失败';
 		}
@@ -241,7 +241,7 @@
 <div class="page-head">
 	<div>
 		<h1>{monitor?.name ?? '监控详情'}</h1>
-		<p class="small muted"><a href={`/app/w/${slug}/monitors`}>返回监控列表</a></p>
+		<p class="small muted"><a href={`/app/w/${slug}/monitors/`}>返回监控列表</a></p>
 	</div>
 	<div class="row">
 		<RangePicker bind:value={range} />

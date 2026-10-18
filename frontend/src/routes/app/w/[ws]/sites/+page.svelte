@@ -43,7 +43,7 @@
 		<h1>站点设置</h1>
 		<p class="small muted">管理采集脚本、域名与时区。</p>
 	</div>
-	<a class="btn btn-sm" href={`/app/w/${slug}/analytics`}>前往统计</a>
+		<a class="btn btn-sm" href={`/app/w/${slug}/analytics/`}>前往统计</a>
 </div>
 
 {#if error}
@@ -66,8 +66,8 @@
 				</div>
 
 				<div class="row">
-					<a class="btn btn-sm" href={`/app/w/${slug}/sites/${site.id}`}>打开设置</a>
-					<a class="btn btn-sm" href={`/app/w/${slug}/analytics/${site.id}`}>查看统计</a>
+					<a class="btn btn-sm" href={`/app/w/${slug}/sites/${site.id}/`}>打开设置</a>
+					<a class="btn btn-sm" href={`/app/w/${slug}/analytics/${site.id}/`}>查看统计</a>
 				</div>
 			</div>
 		{/each}

@@ -15,7 +15,7 @@
 
 		try {
 			await session.login(email, password);
-			await goto('/app');
+			await goto('/app/');
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '登录失败，请稍后重试';
 		} finally {

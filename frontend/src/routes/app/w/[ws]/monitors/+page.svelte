@@ -174,8 +174,8 @@
 						<td class="muted small">{monitor.last_checked_at ? new Date(monitor.last_checked_at).toLocaleString('zh-CN') : '—'}</td>
 						<td>
 							<div class="row" style="justify-content: flex-end; flex-wrap: nowrap">
-								<a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}?edit=1`}>编辑</a>
-								<a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}`}>详情</a>
+								<a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}/?edit=1`}>编辑</a>
+								<a class="btn btn-sm" href={`/app/w/${slug}/monitors/${monitor.id}/`}>详情</a>
 							</div>
 						</td>
 					</tr>

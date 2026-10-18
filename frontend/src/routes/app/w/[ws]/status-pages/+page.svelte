@@ -156,7 +156,7 @@
 			<div>
 				<h2>{pageItem.name}</h2>
 				<div class="small muted">
-					<a href={`/status/${pageItem.slug}`} target="_blank">/status/{pageItem.slug}</a>
+					<a href={`/status/${pageItem.slug}/`} target="_blank">/status/{pageItem.slug}/</a>
 					· {pageItem.has_password ? '有密码' : '公开'}
 				</div>
 			</div>
@@ -200,4 +200,4 @@
 	<div class="card"><p class="empty">还没有状态页。</p></div>
 {/if}
 
-<p class="small muted">公开地址基于当前站点域名：{origin()}/status/&lt;slug&gt;</p>
+<p class="small muted">公开地址基于当前站点域名：{origin()}/status/&lt;slug&gt;/</p>

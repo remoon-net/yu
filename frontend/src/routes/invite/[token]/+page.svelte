@@ -24,7 +24,7 @@
 				name
 			});
 			session.apply(data);
-			await goto('/app');
+			await goto('/app/');
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '加入失败，请稍后重试';
 		} finally {

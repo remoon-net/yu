@@ -70,7 +70,7 @@
 			{#if tab !== 'realtime'}
 				<RangePicker bind:value={range} />
 			{/if}
-			<a class="btn btn-sm" href={`/app/w/${slug}/sites/${site.id}`}>设置</a>
+			<a class="btn btn-sm" href={`/app/w/${slug}/sites/${site.id}/`}>设置</a>
 		</div>
 	</div>
 

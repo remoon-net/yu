@@ -10,7 +10,7 @@
 
 	$effect(() => {
 		if (session.loaded && session.workspaces.length > 0) {
-			void goto(`/app/w/${session.workspaces[0].slug}/analytics`, { replace: true });
+			void goto(`/app/w/${session.workspaces[0].slug}/analytics/`, { replace: true });
 		}
 	});
 
@@ -22,7 +22,7 @@
 		try {
 			const workspace = await api.post<Workspace>('/api/workspaces', { name });
 			await session.load(true);
-			await goto(`/app/w/${workspace.slug}/analytics`);
+			await goto(`/app/w/${workspace.slug}/analytics/`);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '创建工作区失败';
 		} finally {

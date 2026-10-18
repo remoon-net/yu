@@ -145,8 +145,8 @@
 				</div>
 
 				<div class="row">
-					<a class="btn btn-sm btn-primary" href={`/app/w/${slug}/analytics/${site.id}`}>查看看板</a>
-					<a class="btn btn-sm" href={`/app/w/${slug}/sites/${site.id}`}>安装与设置</a>
+					<a class="btn btn-sm btn-primary" href={`/app/w/${slug}/analytics/${site.id}/`}>查看看板</a>
+					<a class="btn btn-sm" href={`/app/w/${slug}/sites/${site.id}/`}>安装与设置</a>
 				</div>
 			</div>
 		{/each}

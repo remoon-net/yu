@@ -92,7 +92,7 @@
 
 		try {
 			await api.delete(`/api/workspaces/${workspace.id}/sites/${site.id}`);
-			await goto(`/app/w/${slug}/analytics`);
+			await goto(`/app/w/${slug}/analytics/`);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '删除失败';
 		}
@@ -113,12 +113,12 @@
 	<div>
 		<h1>站点设置</h1>
 		<p class="small muted">
-			<a href={`/app/w/${slug}/analytics`}>返回站点列表</a>
+			<a href={`/app/w/${slug}/analytics/`}>返回站点列表</a>
 		</p>
 	</div>
 
 	{#if site}
-		<a class="btn btn-sm" href={`/app/w/${slug}/analytics/${site.id}`}>查看看板</a>
+		<a class="btn btn-sm" href={`/app/w/${slug}/analytics/${site.id}/`}>查看看板</a>
 	{/if}
 </div>
 

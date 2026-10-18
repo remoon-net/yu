@@ -11,14 +11,14 @@
 
 	$effect(() => {
 		if (session.loaded && !workspace) {
-			void goto('/app', { replace: true });
+			void goto('/app/', { replace: true });
 		}
 	});
 
 	function switchWorkspace(event: Event) {
 		const target = event.currentTarget as HTMLSelectElement;
 		const next = session.workspaces.find((item) => item.id === target.value);
-		if (next) void goto(`/app/w/${next.slug}/analytics`);
+		if (next) void goto(`/app/w/${next.slug}/analytics/`);
 	}
 
 	function toggleTheme() {
@@ -34,7 +34,7 @@
 
 	async function logout() {
 		await session.logout();
-		void goto('/login', { replace: true });
+		void goto('/login/', { replace: true });
 	}
 </script>
 
@@ -56,32 +56,32 @@
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/analytics')}
-					href={`/app/w/${workspace.slug}/analytics`}>网站统计</a
+					href={`/app/w/${workspace.slug}/analytics/`}>网站统计</a
 				>
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/monitors')}
-					href={`/app/w/${workspace.slug}/monitors`}>服务监控</a
+					href={`/app/w/${workspace.slug}/monitors/`}>服务监控</a
 				>
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/alerts')}
-					href={`/app/w/${workspace.slug}/alerts`}>告警与事件</a
+					href={`/app/w/${workspace.slug}/alerts/`}>告警与事件</a
 				>
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/status-pages')}
-					href={`/app/w/${workspace.slug}/status-pages`}>状态页</a
+					href={`/app/w/${workspace.slug}/status-pages/`}>状态页</a
 				>
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/sites')}
-					href={`/app/w/${workspace.slug}/sites`}>站点设置</a
+					href={`/app/w/${workspace.slug}/sites/`}>站点设置</a
 				>
 				<a
 					class="nav-item"
 					class:active={page.url.pathname.includes('/settings')}
-					href={`/app/w/${workspace.slug}/settings`}>工作区设置</a
+					href={`/app/w/${workspace.slug}/settings/`}>工作区设置</a
 				>
 			</nav>
 
