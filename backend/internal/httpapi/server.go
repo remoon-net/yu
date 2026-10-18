@@ -87,6 +87,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 					r.Get("/sites/{siteID}/short-links", s.handleListShortLinks)
 					r.Post("/sites/{siteID}/short-links", s.handleCreateShortLink)
+					r.Get("/sites/{siteID}/short-links/{linkID}/stats", s.handleShortLinkStats)
 					r.Patch("/sites/{siteID}/short-links/{linkID}", s.handleUpdateShortLink)
 					r.Delete("/sites/{siteID}/short-links/{linkID}", s.handleDeleteShortLink)
 

@@ -1099,6 +1099,10 @@ select[multiple].select {
 	max-width: 420px;
 }
 
+.modal.modal-lg {
+	max-width: 980px;
+}
+
 .modal-head {
 	display: flex;
 	align-items: center;

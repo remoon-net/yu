@@ -8,6 +8,7 @@ import type {
 	MonitorStatsResponse,
 	ShortLink,
 	ShortLinksResponse,
+	ShortLinkStatsResponse,
 	StatusPage,
 	StatusPageItem
 } from '#lib/api/types.js';
@@ -108,6 +109,11 @@ export const shortLinkApi = {
 	},
 	update(workspaceId: string, siteId: string, linkId: string, body: unknown): Promise<ShortLink> {
 		return api.patch<ShortLink>(`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}`, body);
+	},
+	stats(workspaceId: string, siteId: string, linkId: string, range: string): Promise<ShortLinkStatsResponse> {
+		return api.get<ShortLinkStatsResponse>(
+			`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}/stats?range=${encodeURIComponent(range)}`
+		);
 	},
 	remove(workspaceId: string, siteId: string, linkId: string): Promise<void> {
 		return api.delete(`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}`);

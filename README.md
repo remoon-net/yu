@@ -142,6 +142,22 @@ window.yu.event('signup', { plan: 'pro' });
 - 短链必须归属一个站点，点击不计入站点 PV
 - 访问时会把原链接的 query 参数（含 UTM）拼接到目标地址后跳转
 - 过期或停用返回 410 页面
+- 列表会标注目标地址是「站内」还是「站外」；详情面板可看点击趋势、来源、渠道、UTM、设备与浏览器分布及最近 50 条明细
+- 目标是站外时同样能统计点击（在服务端跳转时记录），但落地页之后的行为无法追踪
+- 渠道判定以来源站为准，从自己站点分享出去记为 referral，不会被当成内部跳转
+
+本地想看演示效果可执行（会生成 3 条 `demo-` 短链与 90 天点击数据）：
+
+```bash
+docker exec -i yu-pg psql -U yu -d yu < backend/scripts/seed_short_link_demo.sql
+```
+
+清理演示数据：
+
+```sql
+delete from events where type = 'link_click' and name like 'demo-%';
+delete from short_links where slug like 'demo-%';
+```
 
 ## 邮件通知
 

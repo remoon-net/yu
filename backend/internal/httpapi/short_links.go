@@ -197,6 +197,57 @@ func (s *Server) handleDeleteShortLink(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleShortLinkStats 返回单条短链的点击趋势与分布。
+func (s *Server) handleShortLinkStats(w http.ResponseWriter, r *http.Request) {
+	site, ok := s.siteAccess(w, r, "member")
+	if !ok {
+		return
+	}
+
+	linkID, err := uuid.Parse(chi.URLParam(r, "linkID"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "短链不存在")
+		return
+	}
+
+	link, err := s.store.GetShortLink(r.Context(), site.ID, linkID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "短链不存在")
+			return
+		}
+		slog.Error("查询短链失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取短链失败")
+		return
+	}
+
+	rn, ok := parseRange(r, site.Timezone)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "时间范围不合法")
+		return
+	}
+
+	detail, err := s.store.ShortLinkDetailStats(
+		r.Context(), site.ID, link.Slug, rn.From, rn.To, rn.Interval, rn.Timezone,
+	)
+	if err != nil {
+		slog.Error("查询短链统计失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取短链统计失败")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"link": link,
+		"range": map[string]any{
+			"from":     rn.From,
+			"to":       rn.To,
+			"interval": rn.Interval,
+			"timezone": rn.Timezone,
+		},
+		"stats": detail,
+	})
+}
+
 // handleShortLinkRedirect 处理公开短链跳转，并异步记录点击。
 func (s *Server) handleShortLinkRedirect(w http.ResponseWriter, r *http.Request) {
 	slug := strings.ToLower(strings.TrimSpace(chi.URLParam(r, "slug")))
@@ -210,7 +261,7 @@ func (s *Server) handleShortLinkRedirect(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	link, siteDomain, err := s.store.GetShortLinkBySlug(r.Context(), slug)
+	link, _, err := s.store.GetShortLinkBySlug(r.Context(), slug)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			notFoundPage(w, "短链不存在")
@@ -245,12 +296,12 @@ func (s *Server) handleShortLinkRedirect(w http.ResponseWriter, r *http.Request)
 	}
 	finalURL := target.String()
 
-	s.recordShortLinkClick(r, link, siteDomain, finalURL)
+	s.recordShortLinkClick(r, link, finalURL)
 
 	http.Redirect(w, r, finalURL, http.StatusFound)
 }
 
-func (s *Server) recordShortLinkClick(r *http.Request, link *store.ShortLink, siteDomain, finalURL string) {
+func (s *Server) recordShortLinkClick(r *http.Request, link *store.ShortLink, finalURL string) {
 	sum := sha256.Sum256([]byte(clientIP(r) + "|" + r.UserAgent()))
 	visitorID := hex.EncodeToString(sum[:16])
 
@@ -274,12 +325,14 @@ func (s *Server) recordShortLinkClick(r *http.Request, link *store.ShortLink, si
 		UTMSource:    truncate(utmSource, 200),
 		UTMMedium:    truncate(utmMedium, 200),
 		UTMCampaign:  truncate(utmCampaign, 200),
-		Channel:      analytics.Channel(referrerHost, siteDomain, utmMedium),
-		Browser:      client.Browser,
-		OS:           client.OS,
-		Device:       client.Device,
-		Language:     truncate(r.Header.Get("Accept-Language"), 32),
-		CreatedAt:    now,
+		// 短链本身就是跨站跳转，不能拿绑定站点当 internal 基准：
+		// 从自己的博客/官网点出去也应该按来源归类（站外推广场景）。
+		Channel:   analytics.Channel(referrerHost, "", utmMedium),
+		Browser:   client.Browser,
+		OS:        client.OS,
+		Device:    client.Device,
+		Language:  truncate(r.Header.Get("Accept-Language"), 32),
+		CreatedAt: now,
 	}
 
 	// 跳转不等待落库，写入失败只记日志。

@@ -269,6 +269,38 @@ export interface ShortLinksResponse {
 	stats: ShortLinkStats[] | null;
 }
 
+export interface ShortLinkClick {
+	created_at: string;
+	referrer_host: string;
+	channel: string;
+	utm_source: string;
+	utm_campaign: string;
+	browser: string;
+	os: string;
+	device: string;
+}
+
+export interface ShortLinkDetail {
+	clicks: number;
+	visitors: number;
+	last_click: string | null;
+	series: TimeSeriesPoint[];
+	referrers: CountStat[];
+	channels: CountStat[];
+	utm_source: CountStat[];
+	utm_campaign: CountStat[];
+	browser: CountStat[];
+	os: CountStat[];
+	device: CountStat[];
+	recent: ShortLinkClick[];
+}
+
+export interface ShortLinkStatsResponse {
+	link: ShortLink;
+	range: RangeInfo;
+	stats: ShortLinkDetail;
+}
+
 export interface StatusPage {
 	id: string;
 	slug: string;

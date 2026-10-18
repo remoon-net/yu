@@ -2,7 +2,7 @@
 
 ## 1. 项目概述
 
-Tianji.dev 的精简版：只保留**网站统计**与**服务监控**两大模块，去掉 Server Status、Docker Status、Telemetry、Survey、Feeds、短链、AI Gateway 等附加能力。
+Tianji.dev 的精简版：只保留**网站统计**（含短链追踪）与**服务监控**两大模块，去掉 Server Status、Docker Status、Telemetry、Survey、Feeds、AI Gateway 等附加能力。
 
 目标：单体可部署、轻量、低资源占用，面向独立开发者与小型团队。
 
@@ -10,7 +10,7 @@ Tianji.dev 的精简版：只保留**网站统计**与**服务监控**两大模�
 
 - 不做分布式多地域探针（B13）
 - 不做漏斗 / 留存 / 用户路径分析（A12）
-- 不做短链、Survey、Telemetry 等附加模块
+- 不做短链管理之外的附加能力（Survey、Telemetry 等）
 - 不做 Cookie 追踪（统计使用 localStorage 生成的 visitor_id）
 
 ## 2. 功能范围（已确认）
@@ -247,6 +247,10 @@ create index on short_links (site_id);
 ```
 
 跳转流程：`GET /s/{slug}` → 校验启用与过期 → 合并 query（UTM 透传）→ 302 到目标地址 → 异步写入一条 `link_click` 事件（`name` = slug、`path` = `/s/{slug}`、`url` = 最终地址）。访客标识用 `sha256(ip + UA)`，会话标识为「访客标识 + 日期」，避免依赖采集脚本的 localStorage。过期或停用返回 410 页面。
+
+短链是跨站跳转，渠道判定**不以绑定站点作为 internal 基准**：从自己的博客/官网点出去按来源域名记为 referral（或按 UTM 归类），否则会被误判成 `internal`。
+
+管理端在列表展示点击 / UV / 最近点击与目标域名（标注站内 / 站外），并提供详情面板：点击趋势、来源、渠道、UTM 来源与活动、设备、浏览器分布，以及最近 50 条点击明细。
 
 
 ### 6.4 服务监控
@@ -534,6 +538,7 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 | GET/POST | `/api/workspaces/:ws/sites/:site/short-links` | 短链列表 / 创建 |
 | PATCH/DELETE | `/api/workspaces/:ws/sites/:site/short-links/:id` | 编辑 / 删除 |
 | GET | `.../short-links/stats` | 每个短链的点击量、UV、最近点击 |
+| GET | `.../short-links/:id/stats?range=30d` | 单条短链的点击趋势与来源/渠道/UTM/设备分布 |
 | GET | `/s/:slug` | 公开跳转（302），异步记录 click |
 
 ## 10. 前端设计
