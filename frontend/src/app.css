@@ -1137,6 +1137,8 @@ select[multiple].select {
 
 .modal-body {
 	padding: 20px;
+	max-height: 74vh;
+	overflow-y: auto;
 }
 
 .modal-actions {

@@ -84,8 +84,13 @@
 		return `${window.location.origin}/s/${linkSlug}`;
 	}
 
-	function origin() {
-		return window.location.origin;
+	function targetPath(raw: string) {
+		try {
+			const url = new URL(raw);
+			return `${url.pathname}${url.search}` || '/';
+		} catch {
+			return raw;
+		}
 	}
 
 	function statOf(link: ShortLink): ShortLinkStats | undefined {
@@ -288,11 +293,11 @@
 <div class="page-head">
 	<div>
 		<h1>短链</h1>
-		<p class="small muted">创建可追踪的短链接，点击会计入站点统计。</p>
+		<p class="small muted">创建可追踪的短链接，点击会计入所选站点的统计。</p>
 	</div>
 	<div class="row">
 		{#if sites.length > 1}
-			<select class="select" bind:value={siteId} style="min-width: 160px">
+			<select class="select site-select" bind:value={siteId}>
 				{#each sites as site (site.id)}<option value={site.id}>{site.name}</option>{/each}
 			</select>
 		{/if}
@@ -310,18 +315,17 @@
 {:else if links.length === 0}
 	<div class="card"><p class="empty">还没有短链。</p></div>
 {:else}
-	<div class="card" style="overflow-x: auto">
-		<table class="table">
+	<div class="card table-card">
+		<table class="table link-table">
 			<thead>
 				<tr>
-					<th>短链</th>
-					<th>目标地址</th>
-					<th>目标域名</th>
-					<th class="num">点击</th>
-					<th class="num">访客</th>
-					<th>状态</th>
-					<th>最近点击</th>
-					<th class="num"></th>
+					<th class="col-link">短链</th>
+					<th class="col-target">目标</th>
+					<th class="num col-shrink">点击</th>
+					<th class="num col-shrink">访客</th>
+					<th class="col-shrink">状态</th>
+					<th class="col-shrink">最近点击</th>
+					<th class="col-shrink"></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -329,39 +333,75 @@
 					{@const item = statOf(link)}
 					<tr>
 						<td>
-							<div><code>/s/{link.slug}</code></div>
-							{#if link.title}<div class="small muted">{link.title}</div>{/if}
+							<div class="slug-line"><code>/s/{link.slug}</code></div>
+							{#if link.title}<div class="small muted ellipsis" title={link.title}>{link.title}</div>{/if}
 						</td>
-						<td class="small muted" style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap" title={link.target_url}>
-							{link.target_url}
+						<td class="target-cell">
+							<div class="target-line">
+								<span class="host">{targetHost(link.target_url)}</span>
+								<span class="badge" class:ok={isInternalTarget(link)}>
+									{isInternalTarget(link) ? '站内' : '站外'}
+								</span>
+							</div>
+							<div class="small muted ellipsis" title={link.target_url}>{targetPath(link.target_url)}</div>
 						</td>
-						<td class="small">
-							<span class="host-name">{targetHost(link.target_url)}</span>
-							<span class="badge" class:ok={isInternalTarget(link)}>{isInternalTarget(link) ? '站内' : '站外'}</span>
-						</td>
-						<td class="num">{item?.clicks ?? 0}</td>
-						<td class="num">{item?.visitors ?? 0}</td>
+						<td class="num metric-cell">{formatNumber(item?.clicks ?? 0)}</td>
+						<td class="num metric-cell">{formatNumber(item?.visitors ?? 0)}</td>
 						<td>
-							<span class="badge" class:ok={statusOf(link) === '启用中'}>{statusOf(link)}</span>
+							<span
+								class="badge"
+								class:ok={statusOf(link) === '启用中'}
+								class:badge-idle={statusOf(link) !== '启用中'}
+							>
+								{statusOf(link)}
+							</span>
 						</td>
 						<td class="small muted">
-							{item?.last_click ? new Date(item.last_click).toLocaleString('zh-CN') : '—'}
+							{item?.last_click ? formatDateTime(item.last_click, timezone) : '—'}
 						</td>
-						<td class="num">
+						<td class="actions-cell">
+							<div class="actions">
 							<button class="btn btn-sm" type="button" onclick={() => openDetail(link)}>详情</button>
-							<button class="btn btn-sm" type="button" onclick={() => copy(link)}>复制</button>
-							<button class="btn btn-sm" type="button" onclick={() => openQr(link)}>二维码</button>
+							<button class="icon-btn" type="button" title="复制短链" aria-label="复制短链" onclick={() => copy(link)}>
+								<svg viewBox="0 0 24 24" aria-hidden="true">
+									<rect x="9" y="9" width="11" height="11" rx="2" />
+									<path d="M5 15V5a2 2 0 0 1 2-2h10" />
+								</svg>
+							</button>
+							<button class="icon-btn" type="button" title="二维码" aria-label="二维码" onclick={() => openQr(link)}>
+								<svg viewBox="0 0 24 24" aria-hidden="true">
+									<rect x="3" y="3" width="7" height="7" rx="1" />
+									<rect x="14" y="3" width="7" height="7" rx="1" />
+									<rect x="3" y="14" width="7" height="7" rx="1" />
+									<path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1" />
+								</svg>
+							</button>
 							{#if manageable}
-								<button class="btn btn-sm" type="button" onclick={() => openEdit(link)}>编辑</button>
-								<button class="btn btn-sm btn-danger" type="button" onclick={() => remove(link)}>删除</button>
+								<button class="icon-btn" type="button" title="编辑" aria-label="编辑" onclick={() => openEdit(link)}>
+									<svg viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M4 20h4L20 8l-4-4L4 16v4z" />
+										<path d="M14 6l4 4" />
+									</svg>
+								</button>
+								<button
+									class="icon-btn danger"
+									type="button"
+									title="删除"
+									aria-label="删除"
+									onclick={() => remove(link)}
+								>
+									<svg viewBox="0 0 24 24" aria-hidden="true">
+										<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+									</svg>
+								</button>
 							{/if}
+							</div>
 						</td>
 					</tr>
 				{/each}
 			</tbody>
 		</table>
 	</div>
-	<p class="small muted">短链地址基于当前域名：{origin()}/s/&lt;标识&gt;</p>
 {/if}
 
 <Modal open={showForm} title={editing ? '编辑短链' : '新建短链'} onclose={() => (showForm = false)}>
@@ -502,7 +542,7 @@
 				<p class="empty">暂无点击明细。</p>
 			{:else}
 				<div style="overflow-x: auto">
-					<table class="table">
+					<table class="table recent-table">
 						<thead>
 							<tr>
 								<th>时间</th>
@@ -533,6 +573,130 @@
 </Modal>
 
 <style>
+	.site-select {
+		width: auto;
+		min-width: 150px;
+	}
+
+	.table-card {
+		padding: 4px 0;
+		overflow-x: auto;
+	}
+
+	.link-table {
+		width: 100%;
+	}
+
+	.link-table .col-link {
+		width: 200px;
+	}
+
+	.link-table .col-target {
+		width: 100%;
+	}
+
+	.link-table .col-shrink {
+		width: 1%;
+	}
+
+	.link-table th,
+	.link-table td {
+		white-space: nowrap;
+	}
+
+	.link-table th {
+		padding: 10px 14px;
+	}
+
+	.link-table td {
+		padding: 12px 14px;
+	}
+
+	.slug-line code {
+		font-size: 13.5px;
+		font-weight: 600;
+	}
+
+	.target-cell {
+		max-width: 320px;
+	}
+
+	.target-line {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.host {
+		font-size: 13px;
+	}
+
+	.ellipsis {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.metric-cell {
+		font-weight: 600;
+		font-size: 14px;
+	}
+
+	.badge.badge-idle {
+		color: var(--muted);
+	}
+
+	.actions-cell {
+		text-align: right;
+	}
+
+	.actions {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 6px;
+	}
+
+	.icon-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 30px;
+		padding: 0;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		background: var(--panel);
+		color: var(--muted);
+		cursor: pointer;
+		transition:
+			color 0.12s ease,
+			border-color 0.12s ease,
+			background 0.12s ease;
+	}
+
+	.icon-btn:hover {
+		color: var(--text);
+		border-color: var(--border-strong);
+		background: var(--panel-2);
+	}
+
+	.icon-btn.danger:hover {
+		color: var(--danger);
+		border-color: var(--danger);
+		background: var(--danger-soft);
+	}
+
+	.icon-btn svg {
+		width: 15px;
+		height: 15px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.6;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
 	.readonly-value {
 		display: flex;
 		align-items: center;
@@ -615,8 +779,14 @@
 	.detail-grid {
 		display: grid;
 		gap: 12px;
-		grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		margin-top: 6px;
+	}
+
+	@media (max-width: 760px) {
+		.detail-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.detail-tile {
@@ -633,7 +803,14 @@
 		color: var(--muted);
 	}
 
-	.host-name {
-		margin-right: 6px;
+	.recent-table :global(td) {
+		padding: 8px 12px;
+	}
+
+	.recent-table :global(th) {
+		padding: 8px 12px;
+		position: sticky;
+		top: 0;
+		z-index: 1;
 	}
 </style>
