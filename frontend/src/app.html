@@ -9,7 +9,7 @@
 			try {
 				var theme = localStorage.getItem('yu_theme');
 				document.documentElement.dataset.theme =
-					theme === 'light' || theme === 'dark' ? theme : 'dark';
+					theme === 'dark' || theme === 'light' ? theme : 'light';
 			} catch (e) {}
 		</script>
 		%sveltekit.head%
