@@ -39,6 +39,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 	// 公开短链跳转（由 Caddy 将 /s/* 反代到本服务）
 	r.Get("/s/{slug}", s.handleShortLinkRedirect)
+	r.Get("/t/{file}", s.handlePixelImage)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/login", s.handleLogin)
@@ -90,6 +91,12 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 					r.Get("/sites/{siteID}/short-links/{linkID}/stats", s.handleShortLinkStats)
 					r.Patch("/sites/{siteID}/short-links/{linkID}", s.handleUpdateShortLink)
 					r.Delete("/sites/{siteID}/short-links/{linkID}", s.handleDeleteShortLink)
+
+					r.Get("/sites/{siteID}/pixels", s.handleListPixels)
+					r.Post("/sites/{siteID}/pixels", s.handleCreatePixel)
+					r.Get("/sites/{siteID}/pixels/{pixelID}/stats", s.handlePixelStats)
+					r.Patch("/sites/{siteID}/pixels/{pixelID}", s.handleUpdatePixel)
+					r.Delete("/sites/{siteID}/pixels/{pixelID}", s.handleDeletePixel)
 
 					r.Get("/monitors", s.handleListMonitors)
 					r.Post("/monitors", s.handleCreateMonitor)

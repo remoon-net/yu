@@ -6,6 +6,9 @@ import type {
 	Monitor,
 	MonitorCheck,
 	MonitorStatsResponse,
+	Pixel,
+	PixelsResponse,
+	PixelStatsResponse,
 	ShortLink,
 	ShortLinksResponse,
 	ShortLinkStatsResponse,
@@ -117,5 +120,25 @@ export const shortLinkApi = {
 	},
 	remove(workspaceId: string, siteId: string, linkId: string): Promise<void> {
 		return api.delete(`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}`);
+	}
+};
+
+export const pixelApi = {
+	list(workspaceId: string, siteId: string): Promise<PixelsResponse> {
+		return api.get<PixelsResponse>(`${base(workspaceId)}/sites/${siteId}/pixels`);
+	},
+	create(workspaceId: string, siteId: string, body: unknown): Promise<Pixel> {
+		return api.post<Pixel>(`${base(workspaceId)}/sites/${siteId}/pixels`, body);
+	},
+	update(workspaceId: string, siteId: string, pixelId: string, body: unknown): Promise<Pixel> {
+		return api.patch<Pixel>(`${base(workspaceId)}/sites/${siteId}/pixels/${pixelId}`, body);
+	},
+	stats(workspaceId: string, siteId: string, pixelId: string, range: string): Promise<PixelStatsResponse> {
+		return api.get<PixelStatsResponse>(
+			`${base(workspaceId)}/sites/${siteId}/pixels/${pixelId}/stats?range=${encodeURIComponent(range)}`
+		);
+	},
+	remove(workspaceId: string, siteId: string, pixelId: string): Promise<void> {
+		return api.delete(`${base(workspaceId)}/sites/${siteId}/pixels/${pixelId}`);
 	}
 };

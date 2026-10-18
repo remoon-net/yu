@@ -301,6 +301,35 @@ export interface ShortLinkStatsResponse {
 	stats: ShortLinkDetail;
 }
 
+export interface Pixel {
+	id: string;
+	workspace_id: string;
+	site_id: string;
+	slug: string;
+	name: string;
+	enabled: boolean;
+	expires_at: string | null;
+	created_at: string;
+}
+
+export interface PixelStats {
+	slug: string;
+	hits: number;
+	visitors: number;
+	last_hit: string | null;
+}
+
+export interface PixelsResponse {
+	pixels: Pixel[];
+	stats: PixelStats[] | null;
+}
+
+export interface PixelStatsResponse {
+	pixel: Pixel;
+	range: RangeInfo;
+	stats: ShortLinkDetail;
+}
+
 export interface StatusPage {
 	id: string;
 	slug: string;

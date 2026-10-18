@@ -70,8 +70,11 @@ yu.example.com {
     handle /api/* {
         reverse_proxy 127.0.0.1:8080
     }
-    # 短链跳转由 Go 处理
+    # 短链跳转与遥测像素由 Go 处理
     handle /s/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+    handle /t/* {
         reverse_proxy 127.0.0.1:8080
     }
     handle {
@@ -158,6 +161,26 @@ docker exec -i yu-pg psql -U yu -d yu < backend/scripts/seed_short_link_demo.sql
 delete from events where type = 'link_click' and name like 'demo-%';
 delete from short_links where slug like 'demo-%';
 ```
+
+## 遥测像素
+
+用于**无法注入 `collect.js`** 的页面：第三方平台文章、README、邮件、落地页。嵌入一张 1×1 透明图，页面加载时记录一次曝光到对应站点的 `events`（`type=pixel`）。
+
+工作区「遥测像素」页创建后会给出嵌入代码：
+
+```html
+<img src="https://你的域名/t/<标识>.gif" width="1" height="1" alt="" />
+```
+
+- 无论标识是否存在、是否停用，都返回 200 + GIF（避免别人页面出现破图，也避免被枚举）
+- 停用或过期的像素只是不再记录事件
+- 支持在图片 URL 上追加 `utm_source` / `utm_medium` / `utm_campaign`，用于区分同一篇内容的多个投放位置
+- 详情面板与短链共用：曝光趋势、来源、渠道、UTM、设备、浏览器与最近明细
+
+已知偏差（行业通病）：
+
+- 邮件客户端常预加载图片，曝光会偏高
+- 微信、知乎等平台会代理图片，referrer 与 IP 变成平台侧，来源分析会失真
 
 ## 邮件通知
 

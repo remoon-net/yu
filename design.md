@@ -252,6 +252,45 @@ create index on short_links (site_id);
 
 管理端在列表展示点击 / UV / 最近点击与目标域名（标注站内 / 站外），并提供详情面板：点击趋势、来源、渠道、UTM 来源与活动、设备、浏览器分布，以及最近 50 条点击明细。
 
+### 6.3.1 遥测像素
+
+用于**无法注入 `collect.js`** 的场景（第三方平台文章、README、邮件、落地页），在页面里嵌一个 1px 透明图，页面被打开即记录一次曝光。
+
+与短链共用「一次请求 = 一条事件」的机制，但**独立建模**：像素没有目标地址，语义是曝光而不是点击，后续演进方向也不同（嵌入方式、防刷、缓存策略）。因此不复用 `short_links`，避免 `target_url` 变成「一种类型必需、另一种用不上」的字段。
+
+```sql
+pixels (
+  id uuid pk,
+  workspace_id uuid fk,
+  site_id uuid fk,
+  slug text unique,               -- 默认随机 8 位，也可自定义
+  name text,                      -- 展示名
+  enabled boolean default true,
+  expires_at timestamptz,         -- 可空
+  created_at timestamptz default now()
+)
+
+create index on pixels (site_id);
+```
+
+采集流程：`GET /t/{slug}.gif` →
+
+1. 限流（复用采集限流器，120/min/IP）
+2. 查 `pixels`，校验启用与过期
+3. 命中则异步写入一条 `pixel` 事件（`name` = slug、`path` = `/t/{slug}.gif`、`url` = 完整像素地址）
+4. **无论 slug 是否存在、是否停用，都返回 200 + 1px GIF**，响应头带 `Cache-Control: no-store, no-cache, must-revalidate`
+
+第 4 点是有意的设计：像素挂在别人页面里，返回 404 会出现破图；同时避免被用来枚举有效标识。停用或过期的像素只是不记事件。
+
+query 参数全部参与解析（`utm_source` / `utm_medium` / `utm_campaign` 与 referrer），用于区分同一篇内容的多个投放位置；展示名一律取表里的 `name`，不接受 query 覆盖，避免被伪造。
+
+访客标识、会话标识、渠道判定与 UA 解析与短链完全一致，抽成公共的 `recordHit` 供两者调用。
+
+已知偏差（行业通病，需在文档说明）：
+
+- 邮件客户端常预加载图片，曝光会偏高
+- 微信、知乎等平台代理图片，referrer 与 IP 会变成平台侧，来源分析失真
+- 浏览器缓存会吞掉重复曝光，靠 `no-store` 缓解但不能完全避免
 
 ### 6.4 服务监控
 
@@ -541,6 +580,15 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 | GET | `.../short-links/:id/stats?range=30d` | 单条短链的点击趋势与来源/渠道/UTM/设备分布 |
 | GET | `/s/:slug` | 公开跳转（302），异步记录 click |
 
+### 9.7 遥测像素
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET/POST | `/api/workspaces/:ws/sites/:site/pixels` | 像素列表 / 创建 |
+| PATCH/DELETE | `/api/workspaces/:ws/sites/:site/pixels/:id` | 编辑 / 删除 |
+| GET | `.../pixels/:id/stats?range=30d` | 曝光趋势与来源/渠道/UTM/设备分布 |
+| GET | `/t/:slug.gif` | 公开像素（200 + 1px GIF），异步记录曝光 |
+
 ## 10. 前端设计
 
 ### 10.1 路由
@@ -558,6 +606,7 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 /app/w/[ws]/incidents                   -> 事件与维护
 /app/w/[ws]/status-pages                -> 状态页管理
 /app/w/[ws]/short-links                 -> 短链管理（含二维码）
+/app/w/[ws]/pixels                      -> 遥测像素管理（复制 img 片段）
 /app/w/[ws]/settings                    -> 工作区设置（成员、API Key）
 /status/[slug]                          -> 公开状态页
 /share/[token]                          -> 公开看板

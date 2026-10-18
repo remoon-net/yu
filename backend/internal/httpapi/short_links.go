@@ -296,36 +296,54 @@ func (s *Server) handleShortLinkRedirect(w http.ResponseWriter, r *http.Request)
 	}
 	finalURL := target.String()
 
-	s.recordShortLinkClick(r, link, finalURL)
+	s.recordHit(r, hitRecord{
+		SiteID:    link.SiteID,
+		EventType: "link_click",
+		Name:      link.Slug,
+		Title:     link.Title,
+		URL:       finalURL,
+		Path:      "/s/" + link.Slug,
+	})
 
 	http.Redirect(w, r, finalURL, http.StatusFound)
 }
 
-func (s *Server) recordShortLinkClick(r *http.Request, link *store.ShortLink, finalURL string) {
+// hitRecord 描述一次待记录的服务端命中（短链点击或像素曝光）。
+type hitRecord struct {
+	SiteID    uuid.UUID
+	EventType string
+	Name      string
+	Title     string
+	URL       string
+	Path      string
+}
+
+// recordHit 把一次命中异步写入 events，不阻塞响应。
+func (s *Server) recordHit(r *http.Request, hit hitRecord) {
 	sum := sha256.Sum256([]byte(clientIP(r) + "|" + r.UserAgent()))
 	visitorID := hex.EncodeToString(sum[:16])
 
 	now := time.Now().UTC()
 	referrer := r.Referer()
 	referrerHost := analytics.ReferrerHost(referrer)
-	utmSource, utmMedium, utmCampaign := analytics.UTM(finalURL)
+	utmSource, utmMedium, utmCampaign := analytics.UTM(hit.URL)
 	client := analytics.ParseUserAgent(r.UserAgent())
 
 	in := store.EventInput{
-		SiteID:       link.SiteID,
-		Type:         "link_click",
-		Name:         link.Slug,
+		SiteID:       hit.SiteID,
+		Type:         hit.EventType,
+		Name:         hit.Name,
 		VisitorID:    visitorID,
 		SessionID:    visitorID + "-" + now.Format("20060102"),
-		URL:          truncate(finalURL, 2048),
-		Path:         truncate("/s/"+link.Slug, 1024),
-		Title:        truncate(link.Title, 512),
+		URL:          truncate(hit.URL, 2048),
+		Path:         truncate(hit.Path, 1024),
+		Title:        truncate(hit.Title, 512),
 		Referrer:     truncate(referrer, 2048),
 		ReferrerHost: referrerHost,
 		UTMSource:    truncate(utmSource, 200),
 		UTMMedium:    truncate(utmMedium, 200),
 		UTMCampaign:  truncate(utmCampaign, 200),
-		// 短链本身就是跨站跳转，不能拿绑定站点当 internal 基准：
+		// 短链/像素都是跨站命中，不能拿绑定站点当 internal 基准：
 		// 从自己的博客/官网点出去也应该按来源归类（站外推广场景）。
 		Channel:   analytics.Channel(referrerHost, "", utmMedium),
 		Browser:   client.Browser,
@@ -335,12 +353,12 @@ func (s *Server) recordShortLinkClick(r *http.Request, link *store.ShortLink, fi
 		CreatedAt: now,
 	}
 
-	// 跳转不等待落库，写入失败只记日志。
+	// 不等待落库，写入失败只记日志。
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := s.store.InsertEvent(ctx, in); err != nil {
-			slog.Warn("记录短链点击失败", "err", err, "slug", link.Slug)
+			slog.Warn("记录命中事件失败", "err", err, "type", hit.EventType, "name", hit.Name)
 		}
 	}()
 }

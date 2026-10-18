@@ -235,14 +235,19 @@ func (s *Store) GetShortLink(ctx context.Context, siteID, linkID uuid.UUID) (*Sh
 		where id = $1 and site_id = $2`, linkID, siteID))
 }
 
-// shortLinkClickFilter 是短链点击事件的公共过滤条件（参数 $1..$4）。
-const shortLinkClickFilter = `
+// hitFilter 是短链点击 / 像素曝光事件的公共过滤条件（参数 $1..$5）。
+const hitFilter = `
 		from events
-		where site_id = $1 and type = 'link_click' and name = $2
-		  and created_at >= $3 and created_at < $4`
+		where site_id = $1 and type = $2 and name = $3
+		  and created_at >= $4 and created_at < $5`
 
 // ShortLinkDetailStats 汇总单条短链在区间内的点击趋势与分布。
 func (s *Store) ShortLinkDetailStats(ctx context.Context, siteID uuid.UUID, slug string, from, to time.Time, interval, timezone string) (ShortLinkDetail, error) {
+	return s.hitDetailStats(ctx, siteID, "link_click", slug, from, to, interval, timezone)
+}
+
+// hitDetailStats 汇总某类命中事件（link_click / pixel）在区间内的趋势与分布。
+func (s *Store) hitDetailStats(ctx context.Context, siteID uuid.UUID, eventType, name string, from, to time.Time, interval, timezone string) (ShortLinkDetail, error) {
 	out := ShortLinkDetail{
 		Series:       make([]TimeSeriesPoint, 0, 32),
 		Referrers:    make([]CountStat, 0, 8),
@@ -257,20 +262,20 @@ func (s *Store) ShortLinkDetailStats(ctx context.Context, siteID uuid.UUID, slug
 
 	if err := s.Pool.QueryRow(ctx, `
 		select count(*), count(distinct visitor_id), max(created_at)
-		`+shortLinkClickFilter,
-		siteID, slug, from, to,
+		`+hitFilter,
+		siteID, eventType, name, from, to,
 	).Scan(&out.Clicks, &out.Visitors, &out.LastClick); err != nil {
 		return out, err
 	}
 
 	rows, err := s.Pool.Query(ctx, `
 		select
-			(date_trunc($5, created_at at time zone $6) at time zone $6) as bucket,
+			(date_trunc($6, created_at at time zone $7) at time zone $7) as bucket,
 			count(*) as pv,
 			count(distinct visitor_id) as uv
-		`+shortLinkClickFilter+`
+		`+hitFilter+`
 		group by 1
-		order by 1`, siteID, slug, from, to, interval, timezone)
+		order by 1`, siteID, eventType, name, from, to, interval, timezone)
 	if err != nil {
 		return out, err
 	}
@@ -307,10 +312,10 @@ func (s *Store) ShortLinkDetailStats(ctx context.Context, siteID uuid.UUID, slug
 	}
 
 	for _, dimension := range dimensions {
-		list, err := s.queryCountStats(ctx, dimension.query+shortLinkClickFilter+dimension.extra+`
+		list, err := s.queryCountStats(ctx, dimension.query+hitFilter+dimension.extra+`
 		group by 1
 		order by count desc
-		limit 20`, siteID, slug, from, to)
+		limit 20`, siteID, eventType, name, from, to)
 		if err != nil {
 			return out, err
 		}
@@ -321,9 +326,9 @@ func (s *Store) ShortLinkDetailStats(ctx context.Context, siteID uuid.UUID, slug
 		select created_at, coalesce(referrer_host, ''), coalesce(channel, ''),
 		       coalesce(utm_source, ''), coalesce(utm_campaign, ''),
 		       coalesce(browser, ''), coalesce(os, ''), coalesce(device, '')
-		`+shortLinkClickFilter+`
+		`+hitFilter+`
 		order by created_at desc
-		limit 50`, siteID, slug, from, to)
+		limit 50`, siteID, eventType, name, from, to)
 	if err != nil {
 		return out, err
 	}

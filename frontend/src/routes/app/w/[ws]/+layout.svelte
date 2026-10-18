@@ -135,6 +135,11 @@
 				>
 				<a
 					class="nav-item"
+					class:active={page.url.pathname.includes('/pixels')}
+					href={`/app/w/${workspace.slug}/pixels/`}>遥测像素</a
+				>
+				<a
+					class="nav-item"
 					class:active={page.url.pathname.includes('/sites')}
 					href={`/app/w/${workspace.slug}/sites/`}>站点设置</a
 				>
