@@ -333,7 +333,7 @@
 								style="margin-right: auto"
 								onclick={() => deleteChannel(editingChannel!)}
 							>
-								删除渠道
+								删除
 							</button>
 						{/if}
 						<button class="btn" type="button" onclick={() => (showChannel = false)}>取消</button>

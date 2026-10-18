@@ -305,7 +305,7 @@
 			{#if editError}<div class="error" style="margin-top: 12px">{editError}</div>{/if}
 			<div class="modal-actions">
 				<button class="btn btn-danger" type="button" style="margin-right: auto" onclick={remove}>
-					删除监控
+					删除
 				</button>
 				<button class="btn" type="button" onclick={() => (showEdit = false)}>取消</button>
 				<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '保存中…' : '保存'}</button>

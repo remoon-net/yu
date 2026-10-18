@@ -334,7 +334,7 @@
 					style="margin-right: auto"
 					onclick={() => remove(editing!)}
 				>
-					删除像素
+					删除
 				</button>
 			{/if}
 			<button class="btn" type="button" onclick={() => (showForm = false)}>取消</button>

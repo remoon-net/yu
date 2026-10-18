@@ -293,7 +293,7 @@
 					style="margin-right: auto"
 					onclick={() => remove(editTarget!)}
 				>
-					删除状态页
+					删除
 				</button>
 			{/if}
 			<button class="btn" type="button" onclick={() => (editTarget = null)}>取消</button>
