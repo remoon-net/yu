@@ -11,13 +11,14 @@
 	import RangePicker from '#lib/components/RangePicker.svelte';
 	import StatCard from '#lib/components/StatCard.svelte';
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
-	import { session } from '#lib/stores/session.svelte.js';
+	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { formatInterval, formatTimeout, parseInterval, parseTimeout } from '#lib/utils/duration.js';
 	import { formatNumber } from '#lib/utils/format.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const monitorId = $derived(page.params.monitorId ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
+	const manageable = $derived(canManage(workspace?.role));
 
 	let monitor = $state<Monitor | null>(null);
 	const mutedUntil = $derived(
@@ -245,13 +246,15 @@
 	</div>
 	<div class="row">
 		<RangePicker bind:value={range} />
-		<button class="btn btn-sm" type="button" onclick={openEdit}>编辑</button>
-		{#if isMuted}
-			<button class="btn btn-sm" type="button" onclick={unmute}>取消静默</button>
-		{:else}
-			<button class="btn btn-sm" type="button" onclick={mute}>静默 60 分钟</button>
+		{#if manageable}
+			<button class="btn btn-sm" type="button" onclick={openEdit}>编辑</button>
+			{#if isMuted}
+				<button class="btn btn-sm" type="button" onclick={unmute}>取消静默</button>
+			{:else}
+				<button class="btn btn-sm" type="button" onclick={mute}>静默 60 分钟</button>
+			{/if}
+			<button class="btn btn-sm btn-danger" type="button" onclick={remove}>删除</button>
 		{/if}
-		<button class="btn btn-sm btn-danger" type="button" onclick={remove}>删除</button>
 	</div>
 </div>
 

@@ -43,7 +43,7 @@ func (s *Server) channelAccess(w http.ResponseWriter, r *http.Request, minRole s
 }
 
 func (s *Server) handleListChannels(w http.ResponseWriter, r *http.Request) {
-	ws, _, ok := s.workspaceAccess(w, r, "member")
+	ws, role, ok := s.workspaceAccess(w, r, "member")
 	if !ok {
 		return
 	}
@@ -55,7 +55,36 @@ func (s *Server) handleListChannels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 非管理员只返回展示所需字段，避免泄露 SMTP 密码、Webhook 密钥。
+	if !roleAtLeast(role, "admin") {
+		for i := range channels {
+			channels[i].Config = redactChannelConfig(channels[i].Type, channels[i].Config)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, channels)
+}
+
+// redactChannelConfig 去除渠道配置中的敏感字段。
+func redactChannelConfig(channelType string, raw json.RawMessage) json.RawMessage {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return raw
+	}
+
+	switch channelType {
+	case "smtp":
+		delete(cfg, "password")
+	case "webhook":
+		delete(cfg, "secret")
+		delete(cfg, "headers")
+	}
+
+	out, err := json.Marshal(cfg)
+	if err != nil {
+		return raw
+	}
+	return out
 }
 
 func (s *Server) handleCreateChannel(w http.ResponseWriter, r *http.Request) {
