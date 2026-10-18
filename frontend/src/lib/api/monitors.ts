@@ -50,6 +50,9 @@ export const alertApi = {
 	createChannel(workspaceId: string, body: unknown): Promise<Channel> {
 		return api.post<Channel>(`${base(workspaceId)}/channels`, body);
 	},
+	updateChannel(workspaceId: string, channelId: string, body: unknown): Promise<Channel> {
+		return api.patch<Channel>(`${base(workspaceId)}/channels/${channelId}`, body);
+	},
 	deleteChannel(workspaceId: string, channelId: string): Promise<void> {
 		return api.delete(`${base(workspaceId)}/channels/${channelId}`);
 	},
