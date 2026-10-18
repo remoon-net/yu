@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { ApiError, api } from '#lib/api/client.js';
-	import type { CreateInviteResponse, Invite, Member, Role } from '#lib/api/types.js';
+	import type { APIKey, CreateInviteResponse, Invite, Member, Role } from '#lib/api/types.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { roleLabel } from '#lib/utils/roles.js';
 
@@ -21,6 +21,10 @@
 	let inviteUrl = $state('');
 	let inviteEmailSent = $state(false);
 
+	let apiKeys = $state<APIKey[]>([]);
+	let keyName = $state('');
+	let newToken = $state('');
+
 	$effect(() => {
 		if (!workspace) return;
 		void loadAll(workspace.id);
@@ -30,18 +34,45 @@
 		error = '';
 
 		try {
-			const [memberList, inviteList] = await Promise.all([
+			const [memberList, inviteList, keyList] = await Promise.all([
 				api.get<Member[]>(`/api/workspaces/${workspaceId}/members`),
 				manageable
 					? api.get<Invite[]>(`/api/workspaces/${workspaceId}/invites`)
-					: Promise.resolve([] as Invite[])
+					: Promise.resolve([] as Invite[]),
+				manageable
+					? api.get<APIKey[]>(`/api/workspaces/${workspaceId}/api-keys`)
+					: Promise.resolve([] as APIKey[])
 			]);
 
 			members = memberList;
 			invites = inviteList;
+			apiKeys = keyList;
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载成员失败';
 		}
+	}
+
+	async function createKey(event: SubmitEvent) {
+		event.preventDefault();
+		if (!workspace) return;
+
+		try {
+			const result = await api.post<{ key: APIKey; token: string }>(
+				`/api/workspaces/${workspace.id}/api-keys`,
+				{ name: keyName }
+			);
+			newToken = result.token;
+			keyName = '';
+			await loadAll(workspace.id);
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '创建 API Key 失败';
+		}
+	}
+
+	async function deleteKey(key: APIKey) {
+		if (!workspace || !confirm(`删除 API Key「${key.name}」？`)) return;
+		await api.delete(`/api/workspaces/${workspace.id}/api-keys/${key.id}`);
+		await loadAll(workspace.id);
 	}
 
 	async function invite(event: SubmitEvent) {
@@ -246,6 +277,44 @@
 					</tbody>
 				</table>
 			{/if}
+		</div>
+
+		<div class="card">
+			<div class="card-head"><h2>API Key</h2></div>
+
+			{#if apiKeys.length === 0}
+				<p class="empty">还没有 API Key</p>
+			{:else}
+				<table class="table">
+					<thead><tr><th>名称</th><th>前缀</th><th>最近使用</th><th class="num"></th></tr></thead>
+					<tbody>
+						{#each apiKeys as key (key.id)}
+							<tr>
+								<td>{key.name}</td>
+								<td class="small muted">{key.prefix}…</td>
+								<td class="small muted">{key.last_used_at ? new Date(key.last_used_at).toLocaleString('zh-CN') : '从未使用'}</td>
+								<td class="num"><button class="btn btn-sm btn-danger" type="button" onclick={() => deleteKey(key)}>删除</button></td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+
+			<form onsubmit={createKey} style="margin-top: 16px">
+				<div class="row">
+					<input class="input" style="max-width: 260px" bind:value={keyName} required placeholder="Key 名称，例如 CI" />
+					<button class="btn btn-primary" type="submit">创建</button>
+				</div>
+			</form>
+
+			{#if newToken}
+				<p class="small muted" style="margin-top: 12px">仅显示一次，请立即保存：</p>
+				<div class="copy-box">{newToken}</div>
+			{/if}
+
+			<p class="small muted" style="margin-top: 12px">
+				使用方式：<code>Authorization: Bearer &lt;token&gt;</code>
+			</p>
 		</div>
 	{/if}
 </div>

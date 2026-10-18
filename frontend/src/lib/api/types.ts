@@ -46,6 +46,15 @@ export interface CreateInviteResponse {
 	email_sent: boolean;
 }
 
+export interface APIKey {
+	id: string;
+	workspace_id: string;
+	name: string;
+	prefix: string;
+	created_at: string;
+	last_used_at: string | null;
+}
+
 export interface Site {
 	id: string;
 	workspace_id: string;

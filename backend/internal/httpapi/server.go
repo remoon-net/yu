@@ -116,6 +116,10 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 					r.Delete("/status-pages/{pageID}", s.handleDeleteStatusPage)
 					r.Put("/status-pages/{pageID}/items", s.handlePutStatusPageItems)
 					r.Delete("/maintenance-windows/{windowID}", s.handleDeleteMaintenance)
+
+					r.Get("/api-keys", s.handleListAPIKeys)
+					r.Post("/api-keys", s.handleCreateAPIKey)
+					r.Delete("/api-keys/{keyID}", s.handleDeleteAPIKey)
 				})
 			})
 		})

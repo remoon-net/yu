@@ -145,6 +145,18 @@ func (s *Server) authRequired(next http.Handler) http.Handler {
 			}
 		}
 
+		if header := r.Header.Get("Authorization"); strings.HasPrefix(header, "Bearer ") {
+			token := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+			if token != "" {
+				if user, err := s.store.GetUserByAPIKey(ctx, auth.HashToken(token)); err == nil {
+					ctx = context.WithValue(ctx, userKey, user)
+					ctx = context.WithValue(ctx, authMethodKey, "api_key")
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
+		}
+
 		writeError(w, http.StatusUnauthorized, "未登录或会话已过期")
 	})
 }
