@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { ApiError, api } from '#lib/api/client.js';
 	import type { APIKey, CreateInviteResponse, Invite, Member, Role } from '#lib/api/types.js';
+	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { roleLabel } from '#lib/utils/roles.js';
 
@@ -70,7 +71,13 @@
 	}
 
 	async function deleteKey(key: APIKey) {
-		if (!workspace || !confirm(`删除 API Key「${key.name}」？`)) return;
+		if (!workspace) return;
+		const ok = await confirmDialog({
+			title: '删除 API Key',
+			message: `确定删除 API Key「${key.name}」？使用该 Key 的集成会立即失效。`,
+			confirmText: '删除'
+		});
+		if (!ok) return;
 		await api.delete(`/api/workspaces/${workspace.id}/api-keys/${key.id}`);
 		await loadAll(workspace.id);
 	}
@@ -120,7 +127,12 @@
 
 	async function removeMember(member: Member) {
 		if (!workspace) return;
-		if (!confirm(`确定将 ${member.email} 移出工作区？`)) return;
+		const ok = await confirmDialog({
+			title: '移除成员',
+			message: `确定将 ${member.email} 移出工作区？`,
+			confirmText: '移除'
+		});
+		if (!ok) return;
 
 		error = '';
 		notice = '';

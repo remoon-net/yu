@@ -4,6 +4,7 @@
 	import { monitorApi, statusApi } from '#lib/api/monitors.js';
 	import type { Monitor, StatusPage } from '#lib/api/types.js';
 	import Modal from '#lib/components/Modal.svelte';
+	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -92,7 +93,13 @@
 	}
 
 	async function remove(pageItem: StatusPage) {
-		if (!workspace || !confirm(`删除状态页「${pageItem.name}」？`)) return;
+		if (!workspace) return;
+		const ok = await confirmDialog({
+			title: '删除状态页',
+			message: `确定删除状态页「${pageItem.name}」？公开链接会立即失效。`,
+			confirmText: '删除'
+		});
+		if (!ok) return;
 		await statusApi.remove(workspace.id, pageItem.id);
 		await load(workspace.id);
 	}

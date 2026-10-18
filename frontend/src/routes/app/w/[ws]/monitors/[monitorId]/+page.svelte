@@ -10,6 +10,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import RangePicker from '#lib/components/RangePicker.svelte';
 	import StatCard from '#lib/components/StatCard.svelte';
+	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { session } from '#lib/stores/session.svelte.js';
 	import { formatInterval, formatTimeout, parseInterval, parseTimeout } from '#lib/utils/duration.js';
 	import { formatNumber } from '#lib/utils/format.js';
@@ -220,7 +221,14 @@
 
 	async function remove() {
 		if (!workspace || !monitor) return;
-		if (!confirm(`确定删除监控「${monitor.name}」？历史记录会一并删除。`)) return;
+		if (
+			!(await confirmDialog({
+				title: '删除监控',
+				message: `确定删除监控「${monitor.name}」？历史检测记录会一并删除。`,
+				confirmText: '删除'
+			}))
+		)
+			return;
 		try {
 			await monitorApi.remove(workspace.id, monitor.id);
 			await goto(`/app/w/${slug}/monitors`);

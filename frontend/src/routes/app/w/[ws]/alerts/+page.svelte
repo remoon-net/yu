@@ -4,6 +4,7 @@
 	import { alertApi, monitorApi } from '#lib/api/monitors.js';
 	import type { Channel, Incident, MaintenanceWindow, Monitor } from '#lib/api/types.js';
 	import Modal from '#lib/components/Modal.svelte';
+	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -104,7 +105,13 @@
 	}
 
 	async function deleteChannel(channel: Channel) {
-		if (!workspace || !confirm(`删除渠道「${channel.name}」？`)) return;
+		if (!workspace) return;
+		const ok = await confirmDialog({
+			title: '删除通知渠道',
+			message: `确定删除渠道「${channel.name}」？删除后该渠道不再接收告警。`,
+			confirmText: '删除'
+		});
+		if (!ok) return;
 		await alertApi.deleteChannel(workspace.id, channel.id);
 		await load(workspace.id);
 	}
@@ -135,7 +142,13 @@
 	}
 
 	async function deleteWindow(item: MaintenanceWindow) {
-		if (!workspace || !confirm(`删除维护窗口「${item.title}」？`)) return;
+		if (!workspace) return;
+		const ok = await confirmDialog({
+			title: '删除维护窗口',
+			message: `确定删除维护窗口「${item.title}」？`,
+			confirmText: '删除'
+		});
+		if (!ok) return;
 		await alertApi.deleteMaintenance(workspace.id, item.id);
 		await load(workspace.id);
 	}

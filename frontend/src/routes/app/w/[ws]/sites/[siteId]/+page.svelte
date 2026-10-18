@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, api } from '#lib/api/client.js';
 	import type { Site } from '#lib/api/types.js';
+	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -82,7 +83,12 @@
 
 	async function remove() {
 		if (!site || !workspace) return;
-		if (!confirm(`确定删除站点「${site.name}」？该站点的统计数据会被一并删除。`)) return;
+		const ok = await confirmDialog({
+			title: '删除站点',
+			message: `确定删除站点「${site.name}」？该站点的统计数据会被一并删除。`,
+			confirmText: '删除'
+		});
+		if (!ok) return;
 
 		try {
 			await api.delete(`/api/workspaces/${workspace.id}/sites/${site.id}`);

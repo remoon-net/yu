@@ -5,12 +5,14 @@
 		open = false,
 		title,
 		children,
-		onclose
+		onclose,
+		size = 'md'
 	}: {
 		open: boolean;
 		title: string;
 		children: Snippet;
 		onclose: () => void;
+		size?: 'sm' | 'md';
 	} = $props();
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -27,6 +29,7 @@
 	>
 		<div
 			class="modal"
+			class:modal-sm={size === 'sm'}
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}

@@ -1095,6 +1095,10 @@ select[multiple].select {
 	animation: modalIn 0.18s ease-out;
 }
 
+.modal.modal-sm {
+	max-width: 420px;
+}
+
 .modal-head {
 	display: flex;
 	align-items: center;
