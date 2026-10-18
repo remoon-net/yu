@@ -28,6 +28,15 @@
 	let selected = $state<string[]>([]);
 	let groups = $state<Record<string, string>>({});
 
+	let editTarget = $state<StatusPage | null>(null);
+	let editName = $state('');
+	let editDescription = $state('');
+	let editTheme = $state('dark');
+	let editPassword = $state('');
+	let clearPassword = $state(false);
+	let editError = $state('');
+	let savingEdit = $state(false);
+
 	$effect(() => {
 		if (!workspace) return;
 		void load(workspace.id);
@@ -80,6 +89,41 @@
 		selected = detail.items.map((item) => item.monitor_id);
 		groups = Object.fromEntries(detail.items.map((item) => [item.monitor_id, item.group_name]));
 		editing = pageItem.id;
+	}
+
+	function openEditPage(pageItem: StatusPage) {
+		editTarget = pageItem;
+		editName = pageItem.name;
+		editDescription = pageItem.description;
+		editTheme = pageItem.theme === 'light' ? 'light' : 'dark';
+		editPassword = '';
+		clearPassword = false;
+		editError = '';
+	}
+
+	async function savePage(event: SubmitEvent) {
+		event.preventDefault();
+		if (!workspace || !editTarget) return;
+
+		savingEdit = true;
+		editError = '';
+
+		try {
+			await statusApi.update(workspace.id, editTarget.id, {
+				name: editName,
+				description: editDescription,
+				theme: editTheme,
+				password: editPassword,
+				clear_password: clearPassword
+			});
+			editTarget = null;
+			notice = '状态页已更新';
+			await load(workspace.id);
+		} catch (err) {
+			editError = err instanceof ApiError ? err.message : '保存失败';
+		} finally {
+			savingEdit = false;
+		}
 	}
 
 	async function saveItems(pageItem: StatusPage) {
@@ -161,8 +205,11 @@
 				</div>
 			</div>
 			<div class="row">
-				<button class="btn btn-sm" type="button" onclick={() => edit(pageItem)}>{editing === pageItem.id ? '收起' : '编辑组件'}</button>
-				{#if manageable}<button class="btn btn-sm btn-danger" type="button" onclick={() => remove(pageItem)}>删除</button>{/if}
+				{#if manageable}
+					<button class="btn btn-sm" type="button" onclick={() => openEditPage(pageItem)}>编辑</button>
+					<button class="btn btn-sm" type="button" onclick={() => edit(pageItem)}>{editing === pageItem.id ? '收起组件' : '监控组件'}</button>
+					<button class="btn btn-sm btn-danger" type="button" onclick={() => remove(pageItem)}>删除</button>
+				{/if}
 			</div>
 		</div>
 
@@ -199,5 +246,40 @@
 {#if pages.length === 0}
 	<div class="card"><p class="empty">还没有状态页。</p></div>
 {/if}
+
+<Modal open={!!editTarget} title="编辑状态页" onclose={() => (editTarget = null)}>
+	<form onsubmit={savePage}>
+		<div class="grid-2">
+			<label class="field">名称<input class="input" bind:value={editName} required maxlength={80} /></label>
+			<label class="field">
+				公开地址
+				<input class="input" value={`/status/${editTarget?.slug ?? ''}/`} readonly disabled />
+			</label>
+			<label class="field">描述<input class="input" bind:value={editDescription} /></label>
+			<label class="field">主题
+				<select class="select" bind:value={editTheme}>
+					<option value="dark">深色</option>
+					<option value="light">浅色</option>
+				</select>
+			</label>
+			<label class="field">
+				访问密码（留空保持不变）
+				<input class="input" type="password" bind:value={editPassword} autocomplete="new-password" placeholder="不修改则留空" />
+			</label>
+		</div>
+		{#if editTarget?.has_password}
+			<label class="row" style="margin-top: 14px; gap: 8px; font-size: 13px">
+				<input type="checkbox" bind:checked={clearPassword} /> 移除访问密码（改为公开）
+			</label>
+		{/if}
+		{#if editError}<div class="error" style="margin-top: 12px">{editError}</div>{/if}
+		<div class="modal-actions">
+			<button class="btn" type="button" onclick={() => (editTarget = null)}>取消</button>
+			<button class="btn btn-primary" type="submit" disabled={savingEdit}>
+				{savingEdit ? '保存中…' : '保存'}
+			</button>
+		</div>
+	</form>
+</Modal>
 
 <p class="small muted">公开地址基于当前站点域名：{origin()}/status/&lt;slug&gt;/</p>
