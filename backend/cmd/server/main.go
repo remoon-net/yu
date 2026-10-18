@@ -37,6 +37,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := st.EnsureEventPartitions(ctx, 2); err != nil {
+		slog.Error("创建事件分区失败", "err", err)
+		os.Exit(1)
+	}
+
 	if removed, err := st.DeleteExpiredSessions(ctx); err != nil {
 		slog.Warn("清理过期会话失败", "err", err)
 	} else if removed > 0 {

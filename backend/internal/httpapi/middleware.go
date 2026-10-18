@@ -116,6 +116,12 @@ func (s *Server) originGuard(next http.Handler) http.Handler {
 			return
 		}
 
+		// 采集接口面向任意站点，来源校验交给站点 token 与限流。
+		if r.URL.Path == "/api/collect" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if origin := r.Header.Get("Origin"); origin != "" && !s.originAllowed(origin) {
 			writeError(w, http.StatusForbidden, "请求来源不被允许")
 			return

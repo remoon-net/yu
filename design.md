@@ -327,8 +327,8 @@ status_page_items (
 - 单文件 `collect.js`，目标 < 4KB gzip，零依赖。
 - 页面加载后发送 `pageview`；SPA 场景监听 `history.pushState/replaceState` 与 `popstate` 触发页面切换上报。
 - 使用 `navigator.sendBeacon`，失败降级 `fetch(..., {keepalive:true})`。
-- `visitor_id`：首次访问由服务端下发并写入 `localStorage`（`yu_vid`）；服务端不依赖 Cookie。
-- `session_id`：前端维护，30 分钟无事件自动新建，与后端判定口径一致。
+- `visitor_id`：前端生成 UUID 并写入 `localStorage`（`yu_vid`），随每次上报携带；服务端不依赖 Cookie。
+- `session_id`：前端维护 session_id，30 分钟无事件自动新建，与后端判定口径一致。
 - 页面隐藏 / 离开时发送一次 `ping` 用于更新停留时长（`unload` 事件，携带 `session_id` 与 `last_seen`）。
 
 ### 7.2 上报请求
@@ -339,7 +339,7 @@ Content-Type: text/plain            // 避免 CORS 预检
 Body: {"t":"<site token>","type":"pageview","url":"...","ref":"...","props":{}}
 ```
 
-响应：`204 No Content`，首次访问返回 `X-Yu-Visitor: <uuid>`。
+响应：`204 No Content`。`sendBeacon` 无法读取响应体，因此 visitor_id 由前端生成。
 
 服务端职责：
 
@@ -403,7 +403,7 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 
 - 控制台：Session Cookie（`yu_session`）+ `X-CSRF-Token`
 - 程序访问：`Authorization: Bearer <api_key>`
-- 采集：站点 token 内置于 body
+- 采集：站点 token 内置于 body（`/api/collect` 不受来源白名单限制，靠 token + 限流保护）
 - 公开接口：无认证，按 token 只读
 
 ### 9.1 认证与工作区
@@ -424,15 +424,15 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET/POST | `/api/sites` | 站点列表 / 创建 |
-| PATCH/DELETE | `/api/sites/:id` | 编辑 / 删除 |
-| GET | `/api/sites/:id/stats/overview?from=&to=` | 概览卡片 + 趋势 |
-| GET | `/api/sites/:id/stats/realtime` | 实时（30 分钟） |
-| GET | `/api/sites/:id/stats/pages?from=&to=` | 页面 / 入口 / 退出 |
-| GET | `/api/sites/:id/stats/sources?from=&to=` | 来源、渠道、UTM |
-| GET | `/api/sites/:id/stats/audience?from=&to=` | 设备 / 浏览器 / OS / 地区 |
-| GET | `/api/sites/:id/stats/events?from=&to=` | 自定义事件排行 |
-| GET | `/api/sites/:id/stats/events/:name` | 单事件属性分布与趋势 |
+| GET/POST | `/api/workspaces/:wsId/sites` | 站点列表 / 创建 |
+| GET/PATCH/DELETE | `/api/workspaces/:wsId/sites/:id` | 详情 / 编辑 / 删除 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/overview?from=&to=` | 概览卡片 + 趋势 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/realtime` | 实时（30 分钟） |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/pages?from=&to=` | 页面 / 入口 / 退出 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/sources?from=&to=` | 来源、渠道、UTM |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/audience?from=&to=` | 设备 / 浏览器 / OS / 地区 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/events?from=&to=` | 自定义事件排行 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/events/:name` | 单事件属性分布与趋势 |
 | POST | `/api/collect` | 数据上报 |
 
 ### 9.3 监控
