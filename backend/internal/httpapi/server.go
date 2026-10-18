@@ -58,6 +58,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 				r.Post("/workspaces", s.handleCreateWorkspace)
 
 				r.Route("/workspaces/{wsID}", func(r chi.Router) {
+					r.Delete("/", s.handleDeleteWorkspace)
 					r.Get("/members", s.handleListMembers)
 					r.Patch("/members/{userID}", s.handleUpdateMemberRole)
 					r.Delete("/members/{userID}", s.handleRemoveMember)

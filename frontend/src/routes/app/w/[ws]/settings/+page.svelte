@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError, api } from '#lib/api/client.js';
 	import type { APIKey, CreateInviteResponse, Invite, Member, Role } from '#lib/api/types.js';
@@ -25,6 +26,7 @@
 	let apiKeys = $state<APIKey[]>([]);
 	let keyName = $state('');
 	let newToken = $state('');
+	let deletingWorkspace = $state(false);
 
 	$effect(() => {
 		if (!workspace) return;
@@ -125,8 +127,31 @@
 		}
 	}
 
-	async function removeMember(member: Member) {
+	async function deleteWorkspace() {
 		if (!workspace) return;
+
+		const ok = await confirmDialog({
+			title: '删除工作区',
+			message: `确定删除工作区「${workspace.name}」？\n站点、事件、监控、状态页、告警渠道与成员都会被删除，且无法恢复。`,
+			confirmText: '删除工作区'
+		});
+		if (!ok) return;
+
+		deletingWorkspace = true;
+		error = '';
+
+		try {
+			await api.delete(`/api/workspaces/${workspace.id}`);
+			await session.load(true);
+			await goto('/app/');
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : '删除工作区失败';
+		} finally {
+			deletingWorkspace = false;
+		}
+	}
+
+	async function removeMember(member: Member) {		if (!workspace) return;
 		const ok = await confirmDialog({
 			title: '移除成员',
 			message: `确定将 ${member.email} 移出工作区？`,
@@ -328,5 +353,17 @@
 				使用方式：<code>Authorization: Bearer &lt;token&gt;</code>
 			</p>
 		</div>
+
+		{#if isOwner && workspace}
+			<div class="card" style="border-color: color-mix(in srgb, var(--danger) 40%, var(--border))">
+				<div class="card-head"><h2>危险操作</h2></div>
+				<p class="small muted">
+					删除工作区会一并删除其站点、事件、监控、状态页、告警渠道与成员，且无法恢复。
+				</p>
+				<button class="btn btn-danger" type="button" onclick={deleteWorkspace} disabled={deletingWorkspace}>
+					{deletingWorkspace ? '删除中…' : '删除工作区'}
+				</button>
+			</div>
+		{/if}
 	{/if}
 </div>

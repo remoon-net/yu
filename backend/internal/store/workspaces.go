@@ -205,3 +205,15 @@ func (s *Store) CountOwners(ctx context.Context, workspaceID uuid.UUID) (int, er
 	).Scan(&n)
 	return n, err
 }
+
+// DeleteWorkspace 删除工作区及其全部关联数据（级联）。
+func (s *Store) DeleteWorkspace(ctx context.Context, workspaceID uuid.UUID) error {
+	tag, err := s.Pool.Exec(ctx, `delete from workspaces where id = $1`, workspaceID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}

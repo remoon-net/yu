@@ -110,6 +110,21 @@ func (s *Server) handleCreateWorkspace(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, ws)
 }
 
+func (s *Server) handleDeleteWorkspace(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := s.workspaceAccess(w, r, "owner")
+	if !ok {
+		return
+	}
+
+	if err := s.store.DeleteWorkspace(r.Context(), ws.ID); err != nil {
+		slog.Error("删除工作区失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "删除工作区失败")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleListMembers(w http.ResponseWriter, r *http.Request) {
 	ws, _, ok := s.workspaceAccess(w, r, "member")
 	if !ok {
