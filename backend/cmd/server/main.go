@@ -59,14 +59,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	mail := mailer.New(cfg)
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           httpapi.New(cfg, st, mailer.New(cfg)),
+		Handler:           httpapi.New(cfg, st, mail),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
-	scheduler := monitor.NewScheduler(st, cfg.ProbeConcurrency)
+	scheduler := monitor.NewScheduler(st, cfg.ProbeConcurrency, monitor.NewSender(mail))
 	go scheduler.Run(ctx)
 
 	go func() {

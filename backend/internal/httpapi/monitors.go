@@ -21,6 +21,7 @@ type monitorRequest struct {
 	IntervalSec  int             `json:"interval_sec"`
 	TimeoutMS    int             `json:"timeout_ms"`
 	Retries      int             `json:"retries"`
+	AlertAfter   int             `json:"alert_after"`
 	GroupName    string          `json:"group_name"`
 	Tags         []string        `json:"tags"`
 	SSLAlertDays int             `json:"ssl_alert_days"`
@@ -255,6 +256,14 @@ func buildMonitorInput(workspaceID uuid.UUID, req monitorRequest) (store.Monitor
 		return store.MonitorInput{}, "重试次数需要在 0-5 之间", false
 	}
 
+	alertAfter := req.AlertAfter
+	if alertAfter == 0 {
+		alertAfter = 2
+	}
+	if alertAfter < 1 || alertAfter > 10 {
+		return store.MonitorInput{}, "告警阈值需要在 1-10 之间", false
+	}
+
 	sslDays := req.SSLAlertDays
 	if sslDays == 0 {
 		sslDays = 14
@@ -290,6 +299,7 @@ func buildMonitorInput(workspaceID uuid.UUID, req monitorRequest) (store.Monitor
 		IntervalSec:  interval,
 		TimeoutMS:    timeout,
 		Retries:      req.Retries,
+		AlertAfter:   alertAfter,
 		GroupName:    trimSpace(req.GroupName),
 		Tags:         tags,
 		SSLAlertDays: sslDays,

@@ -393,7 +393,42 @@ stateDiagram-v2
 - 维护窗口内：照常探测与记录，但不通知、不创建 incident
 - 静默（`muted_until`）：不通知，但状态与 incident 正常维护
 
-### 8.3 SSL 提醒
+### 8.3 通知渠道
+
+每个工作区可配置多个渠道，告警会同时发送到全部启用渠道。
+
+```jsonc
+// smtp：SMTP 连接信息来自环境变量，渠道只配置收件人
+{ "to": ["ops@example.com"] }
+
+// webhook
+{ "url": "https://hooks.example.com/yu", "secret": "optional", "headers": {"X-Token": "..."} }
+```
+
+Webhook 请求体：
+
+```json
+{
+  "event": "monitor.down",
+  "workspace": "默认工作区",
+  "status": "down",
+  "latency_ms": 0,
+  "error": "connection refused",
+  "checked_at": "2026-10-18T12:33:43Z",
+  "cert_expires_at": null,
+  "days_left": 0,
+  "monitor": { "name": "官网", "type": "http", "target": "https://example.com" }
+}
+```
+
+配置了 `secret` 时附加 `X-Yu-Signature: sha256=<hmac>`。
+
+- 新进入 `down` 状态立即通知；持续 `down` 时每 30 分钟重复一次
+- `up` 通知只在「down → recovering → up」完成后发送一次
+- 静默与维护窗口抑制通知，维护窗口内也不创建事件
+- 维护窗口 `monitor_ids` 为空表示覆盖工作区全部监控
+
+### 8.4 SSL 提醒
 
 HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`。当剩余天数 ≤ `ssl_alert_days` 且当天未提醒过，发一次提醒（独立去重键）。
 

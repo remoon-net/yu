@@ -90,6 +90,21 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 					r.Delete("/monitors/{monitorID}", s.handleDeleteMonitor)
 					r.Get("/monitors/{monitorID}/checks", s.handleMonitorChecks)
 					r.Get("/monitors/{monitorID}/stats", s.handleMonitorStats)
+					r.Post("/monitors/{monitorID}/mute", s.handleMuteMonitor)
+
+					r.Get("/channels", s.handleListChannels)
+					r.Post("/channels", s.handleCreateChannel)
+					r.Patch("/channels/{channelID}", s.handleUpdateChannel)
+					r.Delete("/channels/{channelID}", s.handleDeleteChannel)
+					r.Post("/channels/{channelID}/test", s.handleTestChannel)
+
+					r.Get("/incidents", s.handleListIncidents)
+					r.Post("/incidents", s.handleCreateIncident)
+					r.Patch("/incidents/{incidentID}/resolve", s.handleResolveIncident)
+
+					r.Get("/maintenance-windows", s.handleListMaintenance)
+					r.Post("/maintenance-windows", s.handleCreateMaintenance)
+					r.Delete("/maintenance-windows/{windowID}", s.handleDeleteMaintenance)
 				})
 			})
 		})

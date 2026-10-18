@@ -20,6 +20,7 @@ type Monitor struct {
 	IntervalSec   int             `json:"interval_sec"`
 	TimeoutMS     int             `json:"timeout_ms"`
 	Retries       int             `json:"retries"`
+	AlertAfter    int             `json:"alert_after"`
 	GroupName     string          `json:"group_name"`
 	Tags          []string        `json:"tags"`
 	SSLAlertDays  int             `json:"ssl_alert_days"`
@@ -41,6 +42,7 @@ type MonitorInput struct {
 	IntervalSec  int
 	TimeoutMS    int
 	Retries      int
+	AlertAfter   int
 	GroupName    string
 	Tags         []string
 	SSLAlertDays int
@@ -91,14 +93,14 @@ type MonitorStats struct {
 }
 
 const monitorColumns = `
-	id, workspace_id, name, type, config, interval_sec, timeout_ms, retries,
+	id, workspace_id, name, type, config, interval_sec, timeout_ms, retries, alert_after,
 	coalesce(group_name, ''), tags, ssl_alert_days, enabled, next_run_at,
 	coalesce(last_status, ''), last_checked_at, last_latency_ms, coalesce(last_error, ''), created_at`
 
 func scanMonitor(row pgx.Row) (*Monitor, error) {
 	m := &Monitor{}
 	err := row.Scan(
-		&m.ID, &m.WorkspaceID, &m.Name, &m.Type, &m.Config, &m.IntervalSec, &m.TimeoutMS, &m.Retries,
+		&m.ID, &m.WorkspaceID, &m.Name, &m.Type, &m.Config, &m.IntervalSec, &m.TimeoutMS, &m.Retries, &m.AlertAfter,
 		&m.GroupName, &m.Tags, &m.SSLAlertDays, &m.Enabled, &m.NextRunAt,
 		&m.LastStatus, &m.LastCheckedAt, &m.LastLatencyMS, &m.LastError, &m.CreatedAt,
 	)
@@ -117,10 +119,10 @@ func (s *Store) CreateMonitor(ctx context.Context, in MonitorInput) (*Monitor, e
 
 	_, err := s.Pool.Exec(ctx, `
 		insert into monitors (
-			id, workspace_id, name, type, config, interval_sec, timeout_ms, retries,
+			id, workspace_id, name, type, config, interval_sec, timeout_ms, retries, alert_after,
 			group_name, tags, ssl_alert_days, enabled, next_run_at
-		) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())`,
-		id, in.WorkspaceID, in.Name, in.Type, in.Config, in.IntervalSec, in.TimeoutMS, in.Retries,
+		) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())`,
+		id, in.WorkspaceID, in.Name, in.Type, in.Config, in.IntervalSec, in.TimeoutMS, in.Retries, in.AlertAfter,
 		nullable(in.GroupName), in.Tags, in.SSLAlertDays, in.Enabled,
 	)
 	if err != nil {
@@ -167,11 +169,11 @@ func (s *Store) UpdateMonitor(ctx context.Context, monitorID uuid.UUID, in Monit
 	tag, err := s.Pool.Exec(ctx, `
 		update monitors set
 			name = $2, type = $3, config = $4, interval_sec = $5, timeout_ms = $6,
-			retries = $7, group_name = $8, tags = $9, ssl_alert_days = $10, enabled = $11,
-			next_run_at = now()
-		where id = $1 and workspace_id = $12`,
+			retries = $7, alert_after = $8, group_name = $9, tags = $10,
+			ssl_alert_days = $11, enabled = $12, next_run_at = now()
+		where id = $1 and workspace_id = $13`,
 		monitorID, in.Name, in.Type, in.Config, in.IntervalSec, in.TimeoutMS,
-		in.Retries, nullable(in.GroupName), in.Tags, in.SSLAlertDays, in.Enabled, in.WorkspaceID,
+		in.Retries, in.AlertAfter, nullable(in.GroupName), in.Tags, in.SSLAlertDays, in.Enabled, in.WorkspaceID,
 	)
 	if err != nil {
 		return nil, err

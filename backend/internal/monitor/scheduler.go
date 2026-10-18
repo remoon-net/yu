@@ -17,14 +17,15 @@ const schedulerLockID int64 = 2026021802
 type Scheduler struct {
 	store       *store.Store
 	concurrency int
+	evaluator   *Evaluator
 }
 
 // NewScheduler 创建调度器。
-func NewScheduler(st *store.Store, concurrency int) *Scheduler {
+func NewScheduler(st *store.Store, concurrency int, sender *Sender) *Scheduler {
 	if concurrency <= 0 {
 		concurrency = 16
 	}
-	return &Scheduler{store: st, concurrency: concurrency}
+	return &Scheduler{store: st, concurrency: concurrency, evaluator: NewEvaluator(st, sender)}
 }
 
 // Run 获取调度锁后开始执行，退出时释放锁。
@@ -157,7 +158,10 @@ func (s *Scheduler) runOne(ctx context.Context, m store.Monitor) {
 	}, next)
 	if err != nil {
 		slog.Error("写入探测结果失败", "err", err, "monitor", m.ID)
+		return
 	}
+
+	s.evaluator.Process(ctx, m, result, checkedAt)
 }
 
 func (s *Scheduler) aggregate(ctx context.Context) {
