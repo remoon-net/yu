@@ -59,7 +59,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	mail := mailer.New(cfg)
+	mail := mailer.New()
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

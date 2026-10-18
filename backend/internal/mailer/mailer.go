@@ -6,21 +6,17 @@ import (
 	"fmt"
 	"net/smtp"
 	"strings"
-
-	"remoon.net/yu/backend/internal/config"
 )
 
 // ErrNotConfigured 表示没有配置 SMTP。
 var ErrNotConfigured = errors.New("SMTP 未配置")
 
 // Mailer 负责发送纯文本邮件。
-type Mailer struct {
-	cfg config.Config
-}
+type Mailer struct{}
 
 // New 创建 Mailer。
-func New(cfg config.Config) *Mailer {
-	return &Mailer{cfg: cfg}
+func New() *Mailer {
+	return &Mailer{}
 }
 
 // Options 是一组 SMTP 连接参数。
@@ -32,29 +28,8 @@ type Options struct {
 	From     string
 }
 
-// Options 返回全局配置中的 SMTP 参数。
-func (m *Mailer) Options() Options {
-	return Options{
-		Host:     m.cfg.SMTPHost,
-		Port:     m.cfg.SMTPPort,
-		Username: m.cfg.SMTPUser,
-		Password: m.cfg.SMTPPass,
-		From:     m.cfg.SMTPFrom,
-	}
-}
-
-// Enabled 表示 SMTP 是否可用。
-func (m *Mailer) Enabled() bool {
-	return strings.TrimSpace(m.cfg.SMTPHost) != ""
-}
-
-// Send 使用全局 SMTP 配置发送一封纯文本邮件。
-func (m *Mailer) Send(ctx context.Context, to, subject, body string) error {
-	return m.SendWith(ctx, m.Options(), to, subject, body)
-}
-
-// SendWith 使用指定 SMTP 参数发送一封纯文本邮件。
-func (m *Mailer) SendWith(ctx context.Context, opts Options, to, subject, body string) error {
+// Send 使用指定 SMTP 参数发送一封纯文本邮件。
+func (m *Mailer) Send(ctx context.Context, opts Options, to, subject, body string) error {
 	opts.Host = strings.TrimSpace(opts.Host)
 	if opts.Host == "" {
 		return ErrNotConfigured

@@ -91,9 +91,6 @@ yu.example.com {
 | `YU_BOOTSTRAP_EMAIL` / `YU_BOOTSTRAP_PASSWORD` | 空 | 首次启动创建管理员 |
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |
 | `YU_PROBE_CONCURRENCY` | `32` | 探测并发上限 |
-| `YU_SMTP_HOST` / `YU_SMTP_PORT` | 空 / `587` | 全局默认 SMTP（渠道未填 host 时使用） |
-| `YU_SMTP_USER` / `YU_SMTP_PASS` | 空 | 全局默认 SMTP 账号 |
-| `YU_SMTP_FROM` | `Yu <noreply@localhost>` | 全局默认发件人 |
 
 ## 采集
 

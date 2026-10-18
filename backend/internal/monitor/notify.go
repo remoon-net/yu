@@ -21,7 +21,6 @@ import (
 )
 
 // SMTPChannelConfig 是邮件渠道配置。
-// host 为空时回退到服务端环境变量中的 SMTP 配置。
 type SMTPChannelConfig struct {
 	Host     string   `json:"host"`
 	Port     int      `json:"port"`
@@ -54,14 +53,15 @@ func ValidateChannelConfig(channelType string, raw json.RawMessage) error {
 				return fmt.Errorf("收件人邮箱不合法: %s", address)
 			}
 		}
-		if strings.TrimSpace(cfg.Host) != "" {
-			if cfg.Port != 0 && (cfg.Port < 1 || cfg.Port > 65535) {
-				return errors.New("SMTP 端口不合法")
-			}
-			if strings.TrimSpace(cfg.From) != "" {
-				if _, err := mail.ParseAddress(cfg.From); err != nil {
-					return errors.New("发件人邮箱不合法")
-				}
+		if strings.TrimSpace(cfg.Host) == "" {
+			return errors.New("SMTP 主机不能为空")
+		}
+		if cfg.Port != 0 && (cfg.Port < 1 || cfg.Port > 65535) {
+			return errors.New("SMTP 端口不合法")
+		}
+		if strings.TrimSpace(cfg.From) != "" {
+			if _, err := mail.ParseAddress(cfg.From); err != nil {
+				return errors.New("发件人邮箱不合法")
 			}
 		}
 		return nil
@@ -137,28 +137,14 @@ func (s *Sender) Send(ctx context.Context, channel store.NotificationChannel, ms
 }
 
 func (s *Sender) sendSMTP(ctx context.Context, raw json.RawMessage, msg AlertMessage) error {
-	var cfg SMTPChannelConfig
-	if err := json.Unmarshal(raw, &cfg); err != nil {
+	cfg, options, err := parseSMTPConfig(raw)
+	if err != nil {
 		return err
-	}
-
-	options := s.mail.Options()
-	if strings.TrimSpace(cfg.Host) != "" {
-		options = mailer.Options{
-			Host:     strings.TrimSpace(cfg.Host),
-			Port:     cfg.Port,
-			Username: strings.TrimSpace(cfg.Username),
-			Password: cfg.Password,
-			From:     strings.TrimSpace(cfg.From),
-		}
-		if options.From == "" {
-			options.From = options.Username
-		}
 	}
 
 	var failures []string
 	for _, to := range cfg.To {
-		if err := s.mail.SendWith(ctx, options, strings.TrimSpace(to), msg.subject(), msg.body()); err != nil {
+		if err := s.mail.Send(ctx, options, strings.TrimSpace(to), msg.subject(), msg.body()); err != nil {
 			failures = append(failures, fmt.Sprintf("%s: %v", to, err))
 		}
 	}
@@ -167,6 +153,37 @@ func (s *Sender) sendSMTP(ctx context.Context, raw json.RawMessage, msg AlertMes
 		return errors.New(strings.Join(failures, "; "))
 	}
 	return nil
+}
+
+// SMTPOptions 解析邮件渠道配置为发送参数，供告警与邀请邮件共用。
+func SMTPOptions(raw json.RawMessage) (mailer.Options, error) {
+	_, options, err := parseSMTPConfig(raw)
+	return options, err
+}
+
+func parseSMTPConfig(raw json.RawMessage) (SMTPChannelConfig, mailer.Options, error) {
+	var cfg SMTPChannelConfig
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return cfg, mailer.Options{}, err
+	}
+
+	host := strings.TrimSpace(cfg.Host)
+	if host == "" {
+		return cfg, mailer.Options{}, errors.New("SMTP 主机未配置")
+	}
+
+	options := mailer.Options{
+		Host:     host,
+		Port:     cfg.Port,
+		Username: strings.TrimSpace(cfg.Username),
+		Password: cfg.Password,
+		From:     strings.TrimSpace(cfg.From),
+	}
+	if options.From == "" {
+		options.From = options.Username
+	}
+
+	return cfg, options, nil
 }
 
 func (s *Sender) sendWebhook(ctx context.Context, raw json.RawMessage, msg AlertMessage) error {

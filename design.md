@@ -550,11 +550,6 @@ YU_DATABASE_URL=postgres://...
 YU_PUBLIC_BASE_URL=https://yu.example.com
 YU_SESSION_TTL=720h
 YU_SECURE_COOKIES=true
-YU_SMTP_HOST=smtp.example.com
-YU_SMTP_PORT=587
-YU_SMTP_USER=
-YU_SMTP_PASS=
-YU_SMTP_FROM="Yu <noreply@example.com>"
 YU_RETENTION_DAYS=0            # 0 = 永久保留
 YU_GEOIP_DB=/data/GeoLite2-City.mmdb  # 可选
 YU_SCHEDULER_ENABLED=true

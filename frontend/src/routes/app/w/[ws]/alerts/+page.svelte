@@ -169,7 +169,7 @@
 	function configSummary(channel: Channel) {
 		if (channel.type === 'smtp') {
 			const config = channel.config as { host?: string; port?: number; to?: string[] };
-			return `${config.host || '环境变量 SMTP'}:${config.port || 587} → ${(config.to ?? []).join(', ')}`;
+			return `${config.host || '未配置主机'}:${config.port || 587} → ${(config.to ?? []).join(', ')}`;
 		}
 		return String((channel.config as { url?: string }).url ?? '');
 	}
@@ -305,7 +305,7 @@
 						{#if channelType === 'webhook'}
 							<label class="field">Webhook 地址<input class="input" bind:value={channelTarget} required placeholder="https://hooks.example.com/yu" /></label>
 						{:else}
-							<label class="field">SMTP 主机<input class="input" bind:value={smtpHost} placeholder="smtp.example.com" /></label>
+							<label class="field">SMTP 主机<input class="input" bind:value={smtpHost} required placeholder="smtp.example.com" /></label>
 							<label class="field">端口<input class="input" type="number" bind:value={smtpPort} min={1} max={65535} /></label>
 							<label class="field">用户名<input class="input" bind:value={smtpUser} placeholder="可选" autocomplete="off" /></label>
 							<label class="field">密码 / 授权码<input class="input" type="password" bind:value={smtpPass} autocomplete="new-password" placeholder={editingChannel ? '留空表示不修改' : ''} /></label>

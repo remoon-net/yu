@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 
 	"remoon.net/yu/backend/internal/auth"
+	"remoon.net/yu/backend/internal/mailer"
+	"remoon.net/yu/backend/internal/monitor"
 	"remoon.net/yu/backend/internal/store"
 )
 
@@ -303,7 +305,7 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	link := s.cfg.PublicBaseURL + "/invite/" + token
-	emailSent := s.sendInviteEmail(r.Context(), invite.Email, ws.Name, link)
+	emailSent := s.sendInviteEmail(r.Context(), ws.ID, invite.Email, ws.Name, link)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"invite_url": link,
@@ -314,8 +316,30 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) sendInviteEmail(ctx context.Context, to, workspaceName, link string) bool {
-	if !s.mail.Enabled() {
+func (s *Server) sendInviteEmail(ctx context.Context, workspaceID uuid.UUID, to, workspaceName, link string) bool {
+	channels, err := s.store.ListChannels(ctx, workspaceID)
+	if err != nil {
+		slog.Warn("读取通知渠道失败", "err", err, "workspace", workspaceID)
+		return false
+	}
+
+	var smtpOptions mailer.Options
+	found := false
+	for _, channel := range channels {
+		if channel.Type != "smtp" || !channel.Enabled {
+			continue
+		}
+		opts, err := monitor.SMTPOptions(channel.Config)
+		if err != nil {
+			slog.Warn("跳过不可用的邮件渠道", "err", err, "channel", channel.ID)
+			continue
+		}
+		smtpOptions = opts
+		found = true
+		break
+	}
+
+	if !found {
 		return false
 	}
 
@@ -326,7 +350,7 @@ func (s *Server) sendInviteEmail(ctx context.Context, to, workspaceName, link st
 	body := "你被邀请加入 Yu 工作区「" + workspaceName + "」。\n\n" +
 		"点击下面的链接设置密码并加入：\n\n" + link + "\n\n链接 7 天内有效。"
 
-	if err := s.mail.Send(ctx, to, subject, body); err != nil {
+	if err := s.mail.Send(ctx, smtpOptions, to, subject, body); err != nil {
 		slog.Warn("发送邀请邮件失败", "err", err, "to", to)
 		return false
 	}

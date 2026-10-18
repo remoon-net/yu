@@ -15,11 +15,6 @@ type Config struct {
 	AllowedOrigins     []string
 	SecureCookies      bool
 	SessionTTL         time.Duration
-	SMTPHost           string
-	SMTPPort           int
-	SMTPUser           string
-	SMTPPass           string
-	SMTPFrom           string
 	BootstrapEmail     string
 	BootstrapPassword  string
 	BootstrapWorkspace string
@@ -34,11 +29,6 @@ func Load() Config {
 		PublicBaseURL:      strings.TrimRight(env("YU_PUBLIC_BASE_URL", "http://localhost:8080"), "/"),
 		SecureCookies:      envBool("YU_SECURE_COOKIES", false),
 		SessionTTL:         envDuration("YU_SESSION_TTL", 720*time.Hour),
-		SMTPHost:           env("YU_SMTP_HOST", ""),
-		SMTPPort:           envInt("YU_SMTP_PORT", 587),
-		SMTPUser:           env("YU_SMTP_USER", ""),
-		SMTPPass:           env("YU_SMTP_PASS", ""),
-		SMTPFrom:           env("YU_SMTP_FROM", "Yu <noreply@localhost>"),
 		BootstrapEmail:     env("YU_BOOTSTRAP_EMAIL", ""),
 		BootstrapPassword:  env("YU_BOOTSTRAP_PASSWORD", ""),
 		BootstrapWorkspace: env("YU_BOOTSTRAP_WORKSPACE", "默认工作区"),
