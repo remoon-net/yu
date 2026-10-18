@@ -107,35 +107,54 @@
   }
 
   var lastURL = '';
+  var pendingTimer = null;
 
-  function pageview() {
-    var current = location.pathname + location.search;
-    if (current === lastURL) return;
+  function currentURL() {
+    return location.pathname + location.search;
+  }
+
+  function reportPageview(force) {
+    var current = currentURL();
+    if (!force && current === lastURL) return;
     lastURL = current;
     send('pageview');
   }
 
-  pageview();
+  // 延迟到本轮渲染结束再上报：SvelteKit 等框架的路由与 <svelte:head>
+  // 在 history 变更后的微任务里更新，立即读取会拿到上一页的标题。
+  function schedulePageview() {
+    if (pendingTimer) return;
+    pendingTimer = setTimeout(function () {
+      pendingTimer = null;
+      reportPageview(false);
+    }, 0);
+  }
+
+  schedulePageview();
 
   var pushState = history.pushState;
   history.pushState = function () {
     pushState.apply(history, arguments);
-    pageview();
+    schedulePageview();
   };
 
   var replaceState = history.replaceState;
   history.replaceState = function () {
     replaceState.apply(history, arguments);
-    pageview();
+    schedulePageview();
   };
 
-  window.addEventListener('popstate', pageview);
+  window.addEventListener('popstate', schedulePageview);
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') send('ping');
   });
 
   window.yu = {
+    // 手动补报一次页面浏览（自动去重），适合在框架的 afterNavigate 中调用。
+    pageview: function () {
+      reportPageview(false);
+    },
     event: function (name, props) {
       if (!name) return;
       send('custom', { name: String(name), props: props || {} });

@@ -100,6 +100,24 @@ yu.example.com {
 <script defer src="https://yu.example.com/collect.js" data-token="站点 token"></script>
 ```
 
+单页应用（SvelteKit / React Router / Vue Router 等 history 路由）的软导航会自动上报，无需额外配置。
+如需在框架导航钩子里补充上报，可手动调用（自动去重）：
+
+```js
+window.yu.pageview();
+```
+
+SvelteKit 也可以放在根布局里，让每次导航结束后补报一次（适合自定义多段式导航）：
+
+```svelte
+<script>
+	import { afterNavigate } from '$app/navigation';
+	afterNavigate(() => window.yu?.pageview());
+</script>
+```
+
+> 采集脚本会在 history 变更后延迟到下一轮任务上报，确保拿到 SvelteKit 更新后的 `<title>`。
+
 自定义事件：
 
 ```js
@@ -109,8 +127,6 @@ window.yu.event('signup', { plan: 'pro' });
 ## 邮件通知
 
 在工作区「告警与事件 → 通知渠道」中添加「邮件」渠道，直接填写 SMTP 主机、端口、用户名、密码、发件人与收件人，每个渠道可以使用不同的 SMTP 服务器。
-
-环境变量中的 SMTP 配置作为兜底：渠道未填写 `host` 时使用全局配置。
 
 ## API Key
 

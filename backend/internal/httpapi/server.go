@@ -40,7 +40,8 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 	r.Get("/collect.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		// 缓存时间不宜过长，便于升级后尽快下发新脚本。
+		w.Header().Set("Cache-Control", "public, max-age=300")
 		_, _ = w.Write(collectscript.JS)
 	})
 
