@@ -185,8 +185,8 @@ sites (
   share_token text unique,        -- 公开看板 token
   share_password_hash text,       -- 可选
   timezone text default 'UTC',
-  filter_bots boolean default true,        -- 过滤机器人流量
-  exclude_cidrs text[] default '{10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}', -- 排除 IP/CIDR
+  filter_bots boolean default false,       -- 是否过滤机器人流量
+  exclude_cidrs text[] default '{}',      -- 排除的 IP/CIDR
   created_at timestamptz
 )
 

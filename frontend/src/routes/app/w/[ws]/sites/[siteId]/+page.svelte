@@ -21,7 +21,7 @@
 	let name = $state('');
 	let domain = $state('');
 	let timezone = $state('UTC');
-	let filterBots = $state(true);
+	let filterBots = $state(false);
 	let excludeCIDRs = $state('');
 
 	const timezones = [
@@ -175,7 +175,7 @@
 
 			<div class="card-head" style="margin: 20px 0 12px"><h2>流量过滤</h2></div>
 			<p class="small muted" style="margin: 0 0 12px">
-				默认过滤机器人流量与私有/内网地址；经反向代理部署时请确保传递 X-Forwarded-For。
+				默认不过滤；需要时手动开启机器人过滤，或填写不写入统计的 IP/CIDR。经反向代理部署时请确保传递 X-Forwarded-For。
 			</p>
 
 			<label class="row" style="gap: 8px; font-size: 13px; margin-bottom: 12px">

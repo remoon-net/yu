@@ -211,8 +211,9 @@ docker run -d --name yu \
 
 - 下载 [GeoLite2-City.mmdb](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data/)，设置 `YU_GEOIP_DB=/path/to/GeoLite2-City.mmdb`；Docker 部署时需把文件挂载进容器
 - 未配置 GeoIP 时，国家/地区/城市字段保持为空，不影响其他统计
-- 流量过滤在「站点设置 → 流量过滤」中配置，按站点生效：默认过滤机器人流量与私有/内网地址
-- 排除 IP/CIDR 支持 IPv4/IPv6，每行或逗号分隔；经反向代理部署时请确保传递 `X-Forwarded-For`
+- 流量过滤在「站点设置 → 流量过滤」中配置，按站点生效；默认关闭，不丢弃机器人与内网流量
+- 需要时可在面板中开启机器人过滤，并按行或逗号填写排除 IP/CIDR（支持 IPv4/IPv6，最多 64 项）
+- 开启地址排除后，经反向代理部署时请确保传递 `X-Forwarded-For`
 - 地理信息在请求时实时查询，历史事件未保存 IP，无法补算
 
 ## 采集
