@@ -4,14 +4,14 @@
 # 构建请使用 make docker / make docker-api，不要直接 docker build。
 FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
 
-ARG VERSION=dev
-ARG WITH_FRONTEND=true
-
 RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S -g 10001 yu \
     && adduser -S -D -H -u 10001 -G yu yu \
     && mkdir -p /data \
     && chown yu:yu /data
+
+ARG VERSION=dev
+ARG WITH_FRONTEND=true
 
 LABEL org.opencontainers.image.title="Yu" \
       org.opencontainers.image.description="网站统计 + 服务监控 + 短链/遥测" \
