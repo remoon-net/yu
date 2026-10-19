@@ -14,16 +14,14 @@ import (
 
 // Site 是一个被统计的网站。
 type Site struct {
-	ID           uuid.UUID `json:"id"`
-	WorkspaceID  uuid.UUID `json:"workspace_id"`
-	Name         string    `json:"name"`
-	Domain       string    `json:"domain"`
-	Token        string    `json:"token"`
-	ShareToken   string    `json:"share_token"`
-	Timezone     string    `json:"timezone"`
-	FilterBots   bool      `json:"filter_bots"`
-	ExcludeCIDRs []string  `json:"exclude_cidrs"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID          uuid.UUID `json:"id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Name        string    `json:"name"`
+	Domain      string    `json:"domain"`
+	Token       string    `json:"token"`
+	ShareToken  string    `json:"share_token"`
+	Timezone    string    `json:"timezone"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // CreateSite 创建站点并生成采集 token 与分享 token。
@@ -64,7 +62,7 @@ func (s *Store) CreateSite(ctx context.Context, workspaceID uuid.UUID, name, dom
 // ListSites 返回工作区下的站点。
 func (s *Store) ListSites(ctx context.Context, workspaceID uuid.UUID) ([]Site, error) {
 	rows, err := s.Pool.Query(ctx, `
-		select id, workspace_id, name, domain, token, share_token, timezone, filter_bots, exclude_cidrs, created_at
+		select id, workspace_id, name, domain, token, share_token, timezone, created_at
 		from sites
 		where workspace_id = $1
 		order by created_at`, workspaceID)
@@ -78,7 +76,7 @@ func (s *Store) ListSites(ctx context.Context, workspaceID uuid.UUID) ([]Site, e
 		var site Site
 		if err := rows.Scan(
 			&site.ID, &site.WorkspaceID, &site.Name, &site.Domain,
-			&site.Token, &site.ShareToken, &site.Timezone, &site.FilterBots, &site.ExcludeCIDRs, &site.CreatedAt,
+			&site.Token, &site.ShareToken, &site.Timezone, &site.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -91,7 +89,7 @@ func (s *Store) ListSites(ctx context.Context, workspaceID uuid.UUID) ([]Site, e
 // GetSite 按工作区与站点 ID 查询站点。
 func (s *Store) GetSite(ctx context.Context, workspaceID, siteID uuid.UUID) (*Site, error) {
 	return s.scanSite(s.Pool.QueryRow(ctx, `
-		select id, workspace_id, name, domain, token, share_token, timezone, filter_bots, exclude_cidrs, created_at
+		select id, workspace_id, name, domain, token, share_token, timezone, created_at
 		from sites
 		where id = $1 and workspace_id = $2`, siteID, workspaceID))
 }
@@ -99,7 +97,7 @@ func (s *Store) GetSite(ctx context.Context, workspaceID, siteID uuid.UUID) (*Si
 // GetSiteByID 按站点 ID 查询站点（内部使用，不校验工作区）。
 func (s *Store) GetSiteByID(ctx context.Context, siteID uuid.UUID) (*Site, error) {
 	return s.scanSite(s.Pool.QueryRow(ctx, `
-		select id, workspace_id, name, domain, token, share_token, timezone, filter_bots, exclude_cidrs, created_at
+		select id, workspace_id, name, domain, token, share_token, timezone, created_at
 		from sites
 		where id = $1`, siteID))
 }
@@ -107,7 +105,7 @@ func (s *Store) GetSiteByID(ctx context.Context, siteID uuid.UUID) (*Site, error
 // GetSiteByToken 按采集 token 查询站点。
 func (s *Store) GetSiteByToken(ctx context.Context, token string) (*Site, error) {
 	return s.scanSite(s.Pool.QueryRow(ctx, `
-		select id, workspace_id, name, domain, token, share_token, timezone, filter_bots, exclude_cidrs, created_at
+		select id, workspace_id, name, domain, token, share_token, timezone, created_at
 		from sites
 		where token = $1`, token))
 }
@@ -116,7 +114,7 @@ func (s *Store) scanSite(row pgx.Row) (*Site, error) {
 	site := &Site{}
 	err := row.Scan(
 		&site.ID, &site.WorkspaceID, &site.Name, &site.Domain,
-		&site.Token, &site.ShareToken, &site.Timezone, &site.FilterBots, &site.ExcludeCIDRs, &site.CreatedAt,
+		&site.Token, &site.ShareToken, &site.Timezone, &site.CreatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -127,13 +125,13 @@ func (s *Store) scanSite(row pgx.Row) (*Site, error) {
 	return site, nil
 }
 
-// UpdateSite 更新站点基础信息与流量过滤配置。
-func (s *Store) UpdateSite(ctx context.Context, workspaceID, siteID uuid.UUID, name, domain, timezone string, filterBots bool, excludeCIDRs []string) (*Site, error) {
+// UpdateSite 更新站点基础信息。
+func (s *Store) UpdateSite(ctx context.Context, workspaceID, siteID uuid.UUID, name, domain, timezone string) (*Site, error) {
 	_, err := s.Pool.Exec(ctx, `
 		update sites
-		set name = $3, domain = $4, timezone = $5, filter_bots = $6, exclude_cidrs = $7
+		set name = $3, domain = $4, timezone = $5
 		where id = $1 and workspace_id = $2`,
-		siteID, workspaceID, strings.TrimSpace(name), normalizeDomain(domain), timezone, filterBots, excludeCIDRs,
+		siteID, workspaceID, strings.TrimSpace(name), normalizeDomain(domain), timezone,
 	)
 	if err != nil {
 		return nil, err

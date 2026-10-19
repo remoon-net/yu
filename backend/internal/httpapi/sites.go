@@ -76,11 +76,9 @@ func (s *Server) handleListSites(w http.ResponseWriter, r *http.Request) {
 }
 
 type siteRequest struct {
-	Name         string   `json:"name"`
-	Domain       string   `json:"domain"`
-	Timezone     string   `json:"timezone"`
-	FilterBots   *bool    `json:"filter_bots"`
-	ExcludeCIDRs []string `json:"exclude_cidrs"`
+	Name     string `json:"name"`
+	Domain   string `json:"domain"`
+	Timezone string `json:"timezone"`
 }
 
 func (s *Server) handleCreateSite(w http.ResponseWriter, r *http.Request) {
@@ -148,22 +146,7 @@ func (s *Server) handleUpdateSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filterBots := site.FilterBots
-	if req.FilterBots != nil {
-		filterBots = *req.FilterBots
-	}
-
-	excludeCIDRs := site.ExcludeCIDRs
-	if req.ExcludeCIDRs != nil {
-		normalized, err := normalizeTrafficCIDRs(req.ExcludeCIDRs)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "排除 IP/CIDR 不合法："+err.Error())
-			return
-		}
-		excludeCIDRs = normalized
-	}
-
-	updated, err := s.store.UpdateSite(r.Context(), site.WorkspaceID, site.ID, name, req.Domain, timezone, filterBots, excludeCIDRs)
+	updated, err := s.store.UpdateSite(r.Context(), site.WorkspaceID, site.ID, name, req.Domain, timezone)
 	if err != nil {
 		slog.Error("更新站点失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "更新站点失败")

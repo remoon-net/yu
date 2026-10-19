@@ -323,14 +323,6 @@ func (s *Server) recordHit(r *http.Request, hit hitRecord) {
 	ip := clientIP(r)
 	client := analytics.ParseUserAgent(r.UserAgent())
 
-	filter := newTrafficFilter(true, nil)
-	if site, err := s.store.GetSiteByID(r.Context(), hit.SiteID); err == nil {
-		filter = newTrafficFilter(site.FilterBots, site.ExcludeCIDRs)
-	}
-	if filter.shouldSkip(ip, client.Device == "bot") {
-		return
-	}
-
 	sum := sha256.Sum256([]byte(ip + "|" + r.UserAgent()))
 	visitorID := hex.EncodeToString(sum[:16])
 

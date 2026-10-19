@@ -88,10 +88,6 @@ func (s *Server) handleCollect(w http.ResponseWriter, r *http.Request) {
 	client := analytics.ParseUserAgent(r.UserAgent())
 
 	ip := clientIP(r)
-	if newTrafficFilter(site.FilterBots, site.ExcludeCIDRs).shouldSkip(ip, client.Device == "bot") {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
 	location := s.geo.Location(ip)
 
 	props := encodeProps(payload.Props)

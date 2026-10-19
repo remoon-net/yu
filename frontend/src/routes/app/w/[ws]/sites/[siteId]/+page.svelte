@@ -21,8 +21,6 @@
 	let name = $state('');
 	let domain = $state('');
 	let timezone = $state('UTC');
-	let filterBots = $state(false);
-	let excludeCIDRs = $state('');
 
 	const timezones = [
 		'Asia/Shanghai',
@@ -52,8 +50,6 @@
 				name = result.name;
 				domain = result.domain;
 				timezone = result.timezone;
-				filterBots = result.filter_bots;
-				excludeCIDRs = (result.exclude_cidrs ?? []).join('\n');
 			})
 			.catch((err) => {
 				if (!cancelled) error = err instanceof Error ? err.message : '加载站点失败';
@@ -76,9 +72,7 @@
 			site = await api.patch<Site>(`/api/workspaces/${workspace.id}/sites/${site.id}`, {
 				name,
 				domain,
-				timezone,
-				filter_bots: filterBots,
-				exclude_cidrs: parseCIDRs(excludeCIDRs)
+				timezone
 			});
 			notice = '已保存';
 		} catch (err) {
@@ -86,13 +80,6 @@
 		} finally {
 			saving = false;
 		}
-	}
-
-	function parseCIDRs(value: string): string[] {
-		return value
-			.split(/[\s,]+/)
-			.map((item) => item.trim())
-			.filter(Boolean);
 	}
 
 	async function remove() {
@@ -172,28 +159,6 @@
 					</select>
 				</label>
 			</div>
-
-			<div class="card-head" style="margin: 20px 0 12px"><h2>流量过滤</h2></div>
-			<p class="small muted" style="margin: 0 0 12px">
-				默认不过滤；需要时手动开启机器人过滤，或填写不写入统计的 IP/CIDR。经反向代理部署时请确保传递 X-Forwarded-For。
-			</p>
-
-			<label class="row" style="gap: 8px; font-size: 13px; margin-bottom: 12px">
-				<input type="checkbox" bind:checked={filterBots} disabled={!manageable} /> 过滤机器人流量
-			</label>
-
-			<label class="field">
-				排除 IP / CIDR
-				<textarea
-					class="input"
-					bind:value={excludeCIDRs}
-					rows="4"
-					spellcheck="false"
-					disabled={!manageable}
-					placeholder={'10.0.0.0/8\n192.168.0.0/16\n203.0.113.8'}
-				></textarea>
-				<span class="hint">每行或逗号分隔一个 IP/CIDR，最多 64 项；留空表示不按地址排除。</span>
-			</label>
 
 			{#if manageable}
 				<div class="row" style="margin-top: 14px">
