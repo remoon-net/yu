@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { EChartsCoreOption } from 'echarts/core';
 	import { analyticsApi } from '#lib/api/analytics.js';
-	import type { OverviewResponse } from '#lib/api/types.js';
+	import type { OverviewResponse, StatsFilter } from '#lib/api/types.js';
 	import Chart from '#lib/components/Chart.svelte';
+	import BarList from '#lib/components/BarList.svelte';
 	import StatCard from '#lib/components/StatCard.svelte';
+	import { bounceRate, deltaOf, rateDelta } from '#lib/utils/analytics.js';
 	import {
 		averageDuration,
 		formatChartTime,
@@ -16,12 +18,14 @@
 		workspaceId,
 		siteId,
 		range,
-		timezone
+		timezone,
+		filter
 	}: {
 		workspaceId: string;
 		siteId: string;
 		range: string;
 		timezone: string;
+		filter?: StatsFilter;
 	} = $props();
 
 	let data = $state<OverviewResponse | null>(null);
@@ -32,13 +36,14 @@
 		const ws = workspaceId;
 		const site = siteId;
 		const span = range;
+		const activeFilter = filter;
 		let cancelled = false;
 
 		loading = true;
 		error = '';
 
 		analyticsApi
-			.overview(ws, site, span)
+			.overview(ws, site, span, activeFilter)
 			.then((result) => {
 				if (!cancelled) data = result;
 			})
@@ -54,22 +59,8 @@
 		};
 	});
 
-	function deltaOf(current: number, previous: number): number | null {
-		if (!previous) return current > 0 ? Number.POSITIVE_INFINITY : null;
-		return ((current - previous) / previous) * 100;
-	}
-
-	// 比率类指标（跳出率、平均停留）没有上期基数时不做对比。
-	function rateDelta(current: number, previous: number): number | null {
-		if (!previous) return null;
-		return ((current - previous) / previous) * 100;
-	}
-
-	function bounceRate(bounces: number, sessions: number): number {
-		return sessions ? (bounces / sessions) * 100 : 0;
-	}
-
-	const option = $derived<EChartsCoreOption>({		grid: { left: 44, right: 16, top: 34, bottom: 30 },
+	const option = $derived<EChartsCoreOption>({
+		grid: { left: 44, right: 16, top: 34, bottom: 30 },
 		tooltip: { trigger: 'axis' },
 		legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
 		xAxis: {
@@ -124,6 +115,19 @@
 		delta={deltaOf(data?.overview.uv ?? 0, data?.previous.uv ?? 0)}
 	/>
 	<StatCard
+		label="新访客"
+		value={formatNumber(data?.overview.new_visitors)}
+		delta={deltaOf(data?.overview.new_visitors ?? 0, data?.previous.new_visitors ?? 0)}
+	/>
+	<StatCard
+		label="回访访客"
+		value={formatNumber(data?.overview.returning_visitors)}
+		delta={deltaOf(
+			data?.overview.returning_visitors ?? 0,
+			data?.previous.returning_visitors ?? 0
+		)}
+	/>
+	<StatCard
 		label="会话数"
 		value={formatNumber(data?.overview.sessions)}
 		delta={deltaOf(data?.overview.sessions ?? 0, data?.previous.sessions ?? 0)}
@@ -148,6 +152,11 @@
 		)}
 		invert
 	/>
+	<StatCard
+		label="活跃用户"
+		value={`${formatNumber(data?.overview.dau)} / ${formatNumber(data?.overview.wau)} / ${formatNumber(data?.overview.mau)}`}
+		hint="日 / 周 / 月"
+	/>
 </div>
 
 <div class="card">
@@ -163,4 +172,9 @@
 	{:else}
 		<p class="empty">暂无数据</p>
 	{/if}
+</div>
+
+<div class="card" style="margin-top: 16px">
+	<div class="card-head"><h2>会话时长分布</h2></div>
+	<BarList items={data?.duration_buckets ?? []} emptyText="暂无数据" />
 </div>

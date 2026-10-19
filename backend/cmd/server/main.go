@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"remoon.net/yu/backend/internal/config"
+	"remoon.net/yu/backend/internal/geoip"
 	"remoon.net/yu/backend/internal/httpapi"
 	"remoon.net/yu/backend/internal/mailer"
 	"remoon.net/yu/backend/internal/monitor"
@@ -63,9 +64,16 @@ func main() {
 
 	mail := mailer.New()
 
+	geo, err := geoip.Open(cfg.GeoLiteDBPath)
+	if err != nil {
+		slog.Error("加载 GeoIP 数据库失败", "err", err, "path", cfg.GeoLiteDBPath)
+		os.Exit(1)
+	}
+	defer geo.Close()
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           httpapi.New(cfg, st, mail),
+		Handler:           httpapi.New(cfg, st, mail, geo),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}

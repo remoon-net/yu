@@ -320,14 +320,20 @@ type hitRecord struct {
 
 // recordHit 把一次命中异步写入 events，不阻塞响应。
 func (s *Server) recordHit(r *http.Request, hit hitRecord) {
-	sum := sha256.Sum256([]byte(clientIP(r) + "|" + r.UserAgent()))
+	ip := clientIP(r)
+	client := analytics.ParseUserAgent(r.UserAgent())
+	if s.traffic.shouldSkip(ip, client.Device == "bot") {
+		return
+	}
+
+	sum := sha256.Sum256([]byte(ip + "|" + r.UserAgent()))
 	visitorID := hex.EncodeToString(sum[:16])
 
 	now := time.Now().UTC()
 	referrer := r.Referer()
 	referrerHost := analytics.ReferrerHost(referrer)
-	utmSource, utmMedium, utmCampaign := analytics.UTM(hit.URL)
-	client := analytics.ParseUserAgent(r.UserAgent())
+	utmSource, utmMedium, utmCampaign, utmTerm, utmContent := analytics.UTM(hit.URL)
+	location := s.geo.Location(ip)
 
 	in := store.EventInput{
 		SiteID:       hit.SiteID,
@@ -343,14 +349,22 @@ func (s *Server) recordHit(r *http.Request, hit hitRecord) {
 		UTMSource:    truncate(utmSource, 200),
 		UTMMedium:    truncate(utmMedium, 200),
 		UTMCampaign:  truncate(utmCampaign, 200),
+		UTMTerm:      truncate(utmTerm, 200),
+		UTMContent:   truncate(utmContent, 200),
 		// 短链/像素都是跨站命中，不能拿绑定站点当 internal 基准：
 		// 从自己的博客/官网点出去也应该按来源归类（站外推广场景）。
-		Channel:   analytics.Channel(referrerHost, "", utmMedium),
-		Browser:   client.Browser,
-		OS:        client.OS,
-		Device:    client.Device,
-		Language:  truncate(r.Header.Get("Accept-Language"), 32),
-		CreatedAt: now,
+		Channel:        analytics.Channel(referrerHost, "", utmMedium),
+		Browser:        client.Browser,
+		BrowserVersion: client.BrowserVersion,
+		OS:             client.OS,
+		OSVersion:      client.OSVersion,
+		Device:         client.Device,
+		DeviceBrand:    client.DeviceBrand,
+		Language:       truncate(r.Header.Get("Accept-Language"), 32),
+		Country:        location.Country,
+		Region:         location.Region,
+		City:           location.City,
+		CreatedAt:      now,
 	}
 
 	// 不等待落库，写入失败只记日志。

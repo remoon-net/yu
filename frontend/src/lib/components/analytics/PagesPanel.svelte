@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { analyticsApi } from '#lib/api/analytics.js';
-	import type { PagesResponse } from '#lib/api/types.js';
+	import type { PagesResponse, StatsFilter } from '#lib/api/types.js';
 	import BarList from '#lib/components/BarList.svelte';
 	import { formatNumber } from '#lib/utils/format.js';
 
 	let {
 		workspaceId,
 		siteId,
-		range
+		range,
+		filter
 	}: {
 		workspaceId: string;
 		siteId: string;
 		range: string;
+		filter?: StatsFilter;
 	} = $props();
 
 	let data = $state<PagesResponse | null>(null);
@@ -22,13 +24,14 @@
 		const ws = workspaceId;
 		const site = siteId;
 		const span = range;
+		const activeFilter = filter;
 		let cancelled = false;
 
 		loading = true;
 		error = '';
 
 		analyticsApi
-			.pages(ws, site, span)
+			.pages(ws, site, span, activeFilter)
 			.then((result) => {
 				if (!cancelled) data = result;
 			})

@@ -529,15 +529,26 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET/POST | `/api/workspaces/:wsId/sites` | 站点列表 / 创建 |
+| GET | `/api/workspaces/:wsId/stats/overview?from=&to=&timezone=` | 工作区概览 + 趋势 + 分站点统计 |
 | GET/PATCH/DELETE | `/api/workspaces/:wsId/sites/:id` | 详情 / 编辑 / 删除 |
-| GET | `/api/workspaces/:wsId/sites/:id/stats/overview?from=&to=` | 概览卡片 + 趋势 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/overview?from=&to=` | 概览卡片 + 趋势，支持筛选参数 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/realtime` | 实时（30 分钟） |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/retention?from=&to=&interval=day\|week` | 留存队列，支持筛选参数 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/pages?from=&to=` | 页面 / 入口 / 退出 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/sources?from=&to=` | 来源、渠道、UTM |
-| GET | `/api/workspaces/:wsId/sites/:id/stats/audience?from=&to=` | 设备 / 浏览器 / OS / 地区 |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/audience?from=&to=` | 设备 / 品牌 / 浏览器 / OS / 地区 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/events?from=&to=` | 自定义事件排行 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/events/:name` | 单事件属性分布与趋势 |
+| POST | `/api/workspaces/:wsId/sites/:id/stats/funnel` | 漏斗分析（2-5 步） |
+| GET | `/api/workspaces/:wsId/sites/:id/stats/export` | 原始事件 CSV 导出 |
+| GET/POST | `/api/workspaces/:wsId/sites/:id/goals` | 目标列表 / 创建 |
+| GET | `/api/workspaces/:wsId/sites/:id/goals/stats` | 目标转化统计 |
+| PATCH/DELETE | `/api/workspaces/:wsId/sites/:id/goals/:goalId` | 编辑 / 删除目标 |
+| GET/POST | `/api/workspaces/:wsId/sites/:id/segments` | 分段列表 / 创建 |
+| PATCH/DELETE | `/api/workspaces/:wsId/sites/:id/segments/:segmentId` | 更新 / 删除分段 |
 | POST | `/api/collect` | 数据上报 |
+
+除实时接口外，站点统计与目标/漏斗接口均支持访客筛选参数：`path`、`referrer_host`、`country`、`device`、`browser`、`utm_source`，多个参数按 AND 组合。
 
 ### 9.3 监控
 
@@ -598,7 +609,7 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 /login
 /invite/[token]
 /app                                    -> 重定向到第一个工作区
-/app/w/[ws]/analytics                   -> 站点列表
+/app/w/[ws]/analytics                   -> 工作区概览与站点列表
 /app/w/[ws]/analytics/[siteId]          -> 概览 / 实时 / 页面 / 来源 / 事件
 /app/w/[ws]/sites                       -> 站点设置（含安装代码）
 /app/w/[ws]/monitors                    -> 监控列表
@@ -641,6 +652,8 @@ YU_SESSION_TTL=720h
 YU_SECURE_COOKIES=true
 YU_RETENTION_DAYS=0            # 0 = 永久保留
 YU_GEOIP_DB=/data/GeoLite2-City.mmdb  # 可选
+YU_FILTER_BOTS=true
+YU_EXCLUDE_CIDRS=10.0.0.0/8,192.168.0.0/16
 YU_SCHEDULER_ENABLED=true
 YU_PROBE_CONCURRENCY=32
 ```

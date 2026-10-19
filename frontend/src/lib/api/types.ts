@@ -76,6 +76,11 @@ export interface StatsOverview {
 	sessions: number;
 	bounces: number;
 	duration_sum: number;
+	new_visitors: number;
+	returning_visitors: number;
+	dau: number;
+	wau: number;
+	mau: number;
 }
 
 export interface TimeSeriesPoint {
@@ -126,6 +131,66 @@ export interface OverviewResponse {
 	overview: StatsOverview;
 	previous: StatsOverview;
 	series: TimeSeriesPoint[];
+	duration_buckets: CountStat[];
+	range: RangeInfo;
+}
+
+/** 维度筛选条件，空字符串表示不筛选。 */
+export interface StatsFilter {
+	path?: string;
+	referrer_host?: string;
+	country?: string;
+	device?: string;
+	browser?: string;
+	utm_source?: string;
+}
+
+export interface RetentionCell {
+	period: number;
+	visitors: number;
+	rate: number;
+}
+
+export interface RetentionCohort {
+	cohort: string;
+	size: number;
+	cells: RetentionCell[];
+}
+
+export interface RetentionResponse {
+	interval: 'day' | 'week';
+	periods: number;
+	cohorts: RetentionCohort[];
+	range: RangeInfo;
+}
+
+export interface Segment {
+	id: string;
+	site_id: string;
+	name: string;
+	filters: StatsFilter;
+	created_at: string;
+}
+
+export interface SegmentsResponse {
+	segments: Segment[];
+}
+
+export interface SiteStatsSummary {
+	site_id: string;
+	name: string;
+	domain: string;
+	pv: number;
+	uv: number;
+	sessions: number;
+}
+
+export interface WorkspaceOverviewResponse {
+	overview: StatsOverview;
+	previous: StatsOverview;
+	series: TimeSeriesPoint[];
+	sites: SiteStatsSummary[];
+	duration_buckets: CountStat[];
 	range: RangeInfo;
 }
 
@@ -137,18 +202,69 @@ export interface PagesResponse {
 
 export interface SourcesResponse {
 	referrers: CountStat[];
+	referrer_urls: CountStat[];
 	channels: CountStat[];
 	utm_source: CountStat[];
 	utm_medium: CountStat[];
 	utm_campaign: CountStat[];
+	utm_term: CountStat[];
+	utm_content: CountStat[];
 }
 
-export type BreakdownField = 'browser' | 'os' | 'device' | 'screen' | 'language' | 'country';
+export type BreakdownField =
+	| 'browser'
+	| 'browser_version'
+	| 'os'
+	| 'os_version'
+	| 'device'
+	| 'device_brand'
+	| 'screen'
+	| 'language'
+	| 'country'
+	| 'region'
+	| 'city';
 
 export type AudienceResponse = Record<BreakdownField, CountStat[]>;
 
 export interface EventsResponse {
 	events: EventStat[];
+}
+
+export type GoalType = 'event' | 'page';
+
+export interface Goal {
+	id: string;
+	site_id: string;
+	name: string;
+	type: GoalType;
+	match_value: string;
+	created_at: string;
+}
+
+export interface GoalStat extends Goal {
+	conversions: number;
+	visitors: number;
+	conversion_rate: number;
+}
+
+export interface GoalsResponse {
+	goals: GoalStat[];
+	range: RangeInfo;
+}
+
+export interface FunnelStepInput {
+	type: GoalType;
+	value: string;
+}
+
+export interface FunnelStepResult extends FunnelStepInput {
+	visitors: number;
+	conversion_rate: number;
+}
+
+export interface FunnelResponse {
+	steps: FunnelStepResult[];
+	range: RangeInfo;
 }
 
 export interface EventDetailResponse {

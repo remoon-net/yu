@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { analyticsApi } from '#lib/api/analytics.js';
 	import { ApiError, api } from '#lib/api/client.js';
-	import type { Site } from '#lib/api/types.js';
+	import type { Site, WorkspaceOverviewResponse } from '#lib/api/types.js';
+	import WorkspaceOverview from '#lib/components/analytics/WorkspaceOverview.svelte';
+	import RangePicker from '#lib/components/RangePicker.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
+	import { formatNumber } from '#lib/utils/format.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
@@ -11,8 +15,16 @@
 	let sites = $state<Site[]>([]);
 	let loading = $state(true);
 	let error = $state('');
+	let range = $state('24h');
+	let overview = $state<WorkspaceOverviewResponse | null>(null);
+	let overviewLoading = $state(true);
 	let showCreate = $state(false);
 	let creating = $state(false);
+
+	const chartTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+	const siteStats = $derived(
+		new Map((overview?.sites ?? []).map((item) => [item.site_id, item]))
+	);
 
 	let name = $state('');
 	let domain = $state('');
@@ -54,6 +66,31 @@
 		};
 	});
 
+	$effect(() => {
+		if (!workspace) return;
+		const workspaceId = workspace.id;
+		const span = range;
+		let cancelled = false;
+
+		overviewLoading = true;
+
+		analyticsApi
+			.workspaceOverview(workspaceId, span, chartTimezone)
+			.then((result) => {
+				if (!cancelled) overview = result;
+			})
+			.catch((err) => {
+				if (!cancelled) error = err instanceof Error ? err.message : '加载概览失败';
+			})
+			.finally(() => {
+				if (!cancelled) overviewLoading = false;
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
 	async function create(event: SubmitEvent) {
 		event.preventDefault();
 		if (!workspace) return;
@@ -84,14 +121,19 @@
 <div class="page-head">
 	<div>
 		<h1>网站统计</h1>
-		<p class="small muted">选择站点查看看板，或创建新的站点。</p>
+		<p class="small muted">工作区全部站点的流量概览。</p>
 	</div>
 
-	{#if manageable}
-		<button class="btn btn-primary" type="button" onclick={() => (showCreate = !showCreate)}>
-			{showCreate ? '取消' : '添加站点'}
-		</button>
-	{/if}
+	<div class="row">
+		{#if sites.length > 0}
+			<RangePicker bind:value={range} />
+		{/if}
+		{#if manageable}
+			<button class="btn btn-primary" type="button" onclick={() => (showCreate = !showCreate)}>
+				{showCreate ? '取消' : '添加站点'}
+			</button>
+		{/if}
+	</div>
 </div>
 
 {#if error}
@@ -136,12 +178,23 @@
 		<p class="empty">还没有站点。添加一个站点并嵌入采集脚本即可开始统计。</p>
 	</div>
 {:else}
+	<div class="stack" style="margin-bottom: 16px">
+		<WorkspaceOverview data={overview} loading={overviewLoading} timezone={chartTimezone} />
+	</div>
+
 	<div class="grid-2">
 		{#each sites as site (site.id)}
+			{@const stat = siteStats.get(site.id)}
 			<div class="card site-card">
 				<div>
 					<div class="site-name">{site.name}</div>
 					<div class="small muted">{site.domain || '未设置域名'} · {site.timezone}</div>
+				</div>
+
+				<div class="site-stats">
+					<div><span class="small muted">PV</span><strong>{formatNumber(stat?.pv)}</strong></div>
+					<div><span class="small muted">UV</span><strong>{formatNumber(stat?.uv)}</strong></div>
+					<div><span class="small muted">会话</span><strong>{formatNumber(stat?.sessions)}</strong></div>
 				</div>
 
 				<div class="row">
@@ -152,3 +205,25 @@
 		{/each}
 	</div>
 {/if}
+
+<style>
+	.site-stats {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+	}
+
+	.site-stats > div {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 8px 10px;
+		border-radius: 9px;
+		background: var(--panel-2);
+	}
+
+	.site-stats strong {
+		font-size: 16px;
+		font-variant-numeric: tabular-nums;
+	}
+</style>

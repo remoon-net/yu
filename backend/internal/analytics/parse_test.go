@@ -53,14 +53,14 @@ func TestReferrerHost(t *testing.T) {
 }
 
 func TestUTM(t *testing.T) {
-	source, medium, campaign := UTM("https://shop.example.net/a?utm_source=weibo&utm_medium=social&utm_campaign=autumn")
-	if source != "weibo" || medium != "social" || campaign != "autumn" {
-		t.Fatalf("UTM() = (%q, %q, %q)", source, medium, campaign)
+	source, medium, campaign, term, content := UTM("https://shop.example.net/a?utm_source=weibo&utm_medium=social&utm_campaign=autumn&utm_term=phone&utm_content=banner")
+	if source != "weibo" || medium != "social" || campaign != "autumn" || term != "phone" || content != "banner" {
+		t.Fatalf("UTM() = (%q, %q, %q, %q, %q)", source, medium, campaign, term, content)
 	}
 
-	source, medium, campaign = UTM("not a url")
-	if source != "" || medium != "" || campaign != "" {
-		t.Fatalf("UTM(invalid) = (%q, %q, %q), want empty", source, medium, campaign)
+	source, medium, campaign, term, content = UTM("not a url")
+	if source != "" || medium != "" || campaign != "" || term != "" || content != "" {
+		t.Fatalf("UTM(invalid) = (%q, %q, %q, %q, %q), want empty", source, medium, campaign, term, content)
 	}
 }
 
@@ -70,18 +70,63 @@ func TestParseUserAgent(t *testing.T) {
 		ua          string
 		wantDevice  string
 		wantBrowser string
+		wantBrand   string
 	}{
 		{
 			name:        "chrome desktop",
 			ua:          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 			wantDevice:  "desktop",
 			wantBrowser: "Chrome",
+			wantBrand:   "",
 		},
 		{
 			name:        "iphone safari",
 			ua:          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
 			wantDevice:  "mobile",
 			wantBrowser: "Safari",
+			wantBrand:   "Apple",
+		},
+		{
+			name:        "samsung android",
+			ua:          "Mozilla/5.0 (Linux; Android 13; SM-G991B Build/TP1A.220624.014) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36",
+			wantDevice:  "mobile",
+			wantBrowser: "Chrome",
+			wantBrand:   "Samsung",
+		},
+		{
+			name:        "redmi android",
+			ua:          "Mozilla/5.0 (Linux; Android 10; Redmi Note 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36",
+			wantDevice:  "mobile",
+			wantBrowser: "Chrome",
+			wantBrand:   "Xiaomi",
+		},
+		{
+			name:        "huawei android",
+			ua:          "Mozilla/5.0 (Linux; Android 10; ELS-NX9 Build/HUAWEIELS-N29) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.88 Mobile Safari/537.36",
+			wantDevice:  "mobile",
+			wantBrowser: "Chrome",
+			wantBrand:   "Huawei",
+		},
+		{
+			name:        "oppo android",
+			ua:          "Mozilla/5.0 (Linux; Android 12; CPH2451) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36",
+			wantDevice:  "mobile",
+			wantBrowser: "Chrome",
+			wantBrand:   "OPPO",
+		},
+		{
+			name:        "vivo android",
+			ua:          "Mozilla/5.0 (Linux; Android 11; V2111) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36",
+			wantDevice:  "mobile",
+			wantBrowser: "Chrome",
+			wantBrand:   "vivo",
+		},
+		{
+			name:        "unknown android",
+			ua:          "Mozilla/5.0 (Linux; Android 9; Generic Phone) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36",
+			wantDevice:  "mobile",
+			wantBrowser: "Chrome",
+			wantBrand:   "其他",
 		},
 	}
 
@@ -94,13 +139,16 @@ func TestParseUserAgent(t *testing.T) {
 			if info.Browser != tc.wantBrowser {
 				t.Fatalf("Browser = %q, want %q", info.Browser, tc.wantBrowser)
 			}
+			if info.DeviceBrand != tc.wantBrand {
+				t.Fatalf("DeviceBrand = %q, want %q", info.DeviceBrand, tc.wantBrand)
+			}
 		})
 	}
 }
 
 func TestParseUserAgentEmpty(t *testing.T) {
 	info := ParseUserAgent("")
-	if info.Browser != "unknown" || info.OS != "unknown" || info.Device != "desktop" {
+	if info.Browser != "unknown" || info.OS != "unknown" || info.Device != "desktop" || info.DeviceBrand != "" {
 		t.Fatalf("ParseUserAgent(\"\") = %+v", info)
 	}
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { EChartsCoreOption } from 'echarts/core';
 	import { analyticsApi } from '#lib/api/analytics.js';
-	import type { EventDetailResponse, EventsResponse } from '#lib/api/types.js';
+	import type { EventDetailResponse, EventsResponse, StatsFilter } from '#lib/api/types.js';
 	import Chart from '#lib/components/Chart.svelte';
 	import { formatChartTime, formatDateTime, formatNumber } from '#lib/utils/format.js';
 
@@ -9,12 +9,14 @@
 		workspaceId,
 		siteId,
 		range,
-		timezone
+		timezone,
+		filter
 	}: {
 		workspaceId: string;
 		siteId: string;
 		range: string;
 		timezone: string;
+		filter?: StatsFilter;
 	} = $props();
 
 	let data = $state<EventsResponse | null>(null);
@@ -27,6 +29,7 @@
 		const ws = workspaceId;
 		const site = siteId;
 		const span = range;
+		const activeFilter = filter;
 		let cancelled = false;
 
 		error = '';
@@ -34,7 +37,7 @@
 		selected = '';
 
 		analyticsApi
-			.events(ws, site, span)
+			.events(ws, site, span, activeFilter)
 			.then((result) => {
 				if (!cancelled) data = result;
 			})
@@ -59,7 +62,7 @@
 		detailLoading = true;
 
 		try {
-			detail = await analyticsApi.eventDetail(workspaceId, siteId, range, name);
+			detail = await analyticsApi.eventDetail(workspaceId, siteId, range, name, filter);
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载事件详情失败';
 		} finally {

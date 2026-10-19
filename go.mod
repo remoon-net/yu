@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/mileusna/useragent v1.3.5
+	github.com/oschwald/maxminddb-golang v1.13.1
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.60.0
 )

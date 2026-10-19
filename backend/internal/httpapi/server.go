@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"remoon.net/yu/backend/internal/config"
+	"remoon.net/yu/backend/internal/geoip"
 	"remoon.net/yu/backend/internal/mailer"
 	"remoon.net/yu/backend/internal/store"
 	"remoon.net/yu/backend/internal/version"
@@ -18,16 +19,20 @@ type Server struct {
 	cfg            config.Config
 	store          *store.Store
 	mail           *mailer.Mailer
+	geo            *geoip.Lookup
+	traffic        trafficFilter
 	collectLimiter *rateLimiter
 	static         *staticFiles
 }
 
 // New 构建路由。
-func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
+func New(cfg config.Config, st *store.Store, mail *mailer.Mailer, geo *geoip.Lookup) http.Handler {
 	s := &Server{
 		cfg:            cfg,
 		store:          st,
 		mail:           mail,
+		geo:            geo,
+		traffic:        newTrafficFilter(cfg.FilterBots, cfg.ExcludeCIDRs),
 		collectLimiter: newRateLimiter(),
 		static:         newStaticFiles(cfg.StaticDir),
 	}
@@ -48,6 +53,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 			"commit":    version.Commit,
 			"buildTime": version.BuildTime,
 			"static":    s.static != nil,
+			"geoip":     s.geo != nil,
 		})
 	})
 
@@ -79,6 +85,8 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 
 				r.Route("/workspaces/{wsID}", func(r chi.Router) {
 					r.Delete("/", s.handleDeleteWorkspace)
+					r.Get("/stats/overview", s.handleWorkspaceStatsOverview)
+
 					r.Get("/members", s.handleListMembers)
 					r.Patch("/members/{userID}", s.handleUpdateMemberRole)
 					r.Delete("/members/{userID}", s.handleRemoveMember)
@@ -100,6 +108,20 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 					r.Get("/sites/{siteID}/stats/audience", s.handleStatsAudience)
 					r.Get("/sites/{siteID}/stats/events", s.handleStatsEvents)
 					r.Get("/sites/{siteID}/stats/events/{name}", s.handleStatsEventDetail)
+					r.Get("/sites/{siteID}/stats/export", s.handleStatsExport)
+					r.Get("/sites/{siteID}/stats/retention", s.handleStatsRetention)
+					r.Post("/sites/{siteID}/stats/funnel", s.handleStatsFunnel)
+
+					r.Get("/sites/{siteID}/goals", s.handleListGoals)
+					r.Post("/sites/{siteID}/goals", s.handleCreateGoal)
+					r.Get("/sites/{siteID}/goals/stats", s.handleGoalStats)
+					r.Patch("/sites/{siteID}/goals/{goalID}", s.handleUpdateGoal)
+					r.Delete("/sites/{siteID}/goals/{goalID}", s.handleDeleteGoal)
+
+					r.Get("/sites/{siteID}/segments", s.handleListSegments)
+					r.Post("/sites/{siteID}/segments", s.handleCreateSegment)
+					r.Patch("/sites/{siteID}/segments/{segmentID}", s.handleUpdateSegment)
+					r.Delete("/sites/{siteID}/segments/{segmentID}", s.handleDeleteSegment)
 					r.Post("/sites/{siteID}/share-password", s.handleSetSharePassword)
 
 					r.Get("/sites/{siteID}/short-links", s.handleListShortLinks)

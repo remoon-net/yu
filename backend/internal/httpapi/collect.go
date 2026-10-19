@@ -82,10 +82,17 @@ func (s *Server) handleCollect(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	utmSource, utmMedium, utmCampaign := analytics.UTM(payload.URL)
+	utmSource, utmMedium, utmCampaign, utmTerm, utmContent := analytics.UTM(payload.URL)
 	referrerHost := analytics.ReferrerHost(payload.Referrer)
 	channel := analytics.Channel(referrerHost, site.Domain, utmMedium)
 	client := analytics.ParseUserAgent(r.UserAgent())
+
+	ip := clientIP(r)
+	if s.traffic.shouldSkip(ip, client.Device == "bot") {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	location := s.geo.Location(ip)
 
 	props := encodeProps(payload.Props)
 
@@ -99,27 +106,35 @@ func (s *Server) handleCollect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := store.EventInput{
-		SiteID:       site.ID,
-		Type:         eventType,
-		Name:         truncate(payload.Name, 128),
-		VisitorID:    visitorID,
-		SessionID:    sessionID,
-		URL:          truncate(payload.URL, 2048),
-		Path:         truncate(path, 1024),
-		Title:        truncate(payload.Title, 512),
-		Referrer:     truncate(payload.Referrer, 2048),
-		ReferrerHost: referrerHost,
-		UTMSource:    truncate(utmSource, 200),
-		UTMMedium:    truncate(utmMedium, 200),
-		UTMCampaign:  truncate(utmCampaign, 200),
-		Channel:      channel,
-		Browser:      client.Browser,
-		OS:           client.OS,
-		Device:       client.Device,
-		Screen:       truncate(payload.Screen, 32),
-		Language:     truncate(payload.Language, 32),
-		Props:        props,
-		CreatedAt:    time.Now().UTC(),
+		SiteID:         site.ID,
+		Type:           eventType,
+		Name:           truncate(payload.Name, 128),
+		VisitorID:      visitorID,
+		SessionID:      sessionID,
+		URL:            truncate(payload.URL, 2048),
+		Path:           truncate(path, 1024),
+		Title:          truncate(payload.Title, 512),
+		Referrer:       truncate(payload.Referrer, 2048),
+		ReferrerHost:   referrerHost,
+		UTMSource:      truncate(utmSource, 200),
+		UTMMedium:      truncate(utmMedium, 200),
+		UTMCampaign:    truncate(utmCampaign, 200),
+		UTMTerm:        truncate(utmTerm, 200),
+		UTMContent:     truncate(utmContent, 200),
+		Channel:        channel,
+		Browser:        client.Browser,
+		BrowserVersion: client.BrowserVersion,
+		OS:             client.OS,
+		OSVersion:      client.OSVersion,
+		Device:         client.Device,
+		DeviceBrand:    client.DeviceBrand,
+		Screen:         truncate(payload.Screen, 32),
+		Language:       truncate(payload.Language, 32),
+		Country:        location.Country,
+		Region:         location.Region,
+		City:           location.City,
+		Props:          props,
+		CreatedAt:      time.Now().UTC(),
 	}
 
 	// host 仅用于日志排查，统计中不使用

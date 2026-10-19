@@ -12,6 +12,9 @@ services:
       YU_BOOTSTRAP_EMAIL: ${YU_BOOTSTRAP_EMAIL:-admin@example.com}
       YU_BOOTSTRAP_PASSWORD: ${YU_BOOTSTRAP_PASSWORD:-change-me-please}
       YU_BOOTSTRAP_WORKSPACE: ${YU_BOOTSTRAP_WORKSPACE:-默认工作区}
+      YU_GEOIP_DB: ${YU_GEOIP_DB:-}
+      YU_FILTER_BOTS: ${YU_FILTER_BOTS:-true}
+      YU_EXCLUDE_CIDRS: ${YU_EXCLUDE_CIDRS:-}
     depends_on:
       postgres:
         condition: service_healthy

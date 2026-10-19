@@ -6,11 +6,17 @@ Tianji 精简版：网站统计 + 服务监控 + 短链/遥测，前后端分离
 
 **网站统计**
 
-- PV / UV、会话数、跳出率、平均停留，带本期 vs 上期环比
+- PV / UV、新访客 / 回访、DAU / WAU / MAU、会话数、跳出率、平均停留，带本期 vs 上期环比
+- 会话时长分布、工作区概览：跨站点汇总 PV / UV / 会话与趋势，站点卡片展示区间数据
 - 热门页面、入口页、退出页
-- 来源、UTM、渠道归类
-- 访客画像：设备、浏览器、操作系统、屏幕、语言、国家
+- 来源、UTM（source / medium / campaign / term / content）、渠道归类
+- 自动追踪出站点击、文件下载、滚动深度与站内搜索（作为自定义事件）
+- 访客画像：设备类型、手机品牌、浏览器、操作系统、屏幕、语言、国家/地区/城市
 - 实时访客、自定义事件与属性、公开看板（可设密码）
+- 目标转化（事件/页面）、2-5 步漏斗分析
+- 留存分析（按天/周队列热力图）
+- 维度筛选与可保存分段（页面、来源域名、国家、设备、浏览器、UTM Source）
+- 原始事件 CSV 导出
 
 **服务监控**
 
@@ -199,6 +205,17 @@ docker run -d --name yu \
 | `YU_BOOTSTRAP_EMAIL` / `YU_BOOTSTRAP_PASSWORD` | 空 | 首次启动创建管理员 |
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |
 | `YU_PROBE_CONCURRENCY` | `32` | 探测并发上限 |
+| `YU_GEOIP_DB` | 空 | MaxMind GeoLite2 City 数据库路径，启用后记录国家/地区/城市 |
+| `YU_FILTER_BOTS` | `true` | 是否过滤 bot 流量（不写入统计） |
+| `YU_EXCLUDE_CIDRS` | 空 | 不统计的 IP/CIDR，逗号分隔，例如内网或办公网 |
+
+## 地理与流量过滤
+
+- 下载 [GeoLite2-City.mmdb](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data/)，设置 `YU_GEOIP_DB=/path/to/GeoLite2-City.mmdb`；Docker 部署时需把文件挂载进容器
+- 未配置 GeoIP 时，国家/地区/城市字段保持为空，不影响其他统计
+- Bot 默认不写入统计；如需保留，设置 `YU_FILTER_BOTS=false`
+- 如需排除内部流量，设置 `YU_EXCLUDE_CIDRS=10.0.0.0/8,192.168.0.0/16,203.0.113.8`
+- 地理信息在请求时实时查询，历史事件未保存 IP，无法补算
 
 ## 采集
 

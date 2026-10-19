@@ -107,17 +107,49 @@
   }
 
   var lastURL = '';
+  var lastSearch = '';
+  var scrollMarks = {};
+  var lastScrollAt = 0;
   var pendingTimer = null;
+
+  var DOWNLOAD_EXT = {
+    pdf: 1, zip: 1, rar: 1, '7z': 1, tar: 1, gz: 1,
+    doc: 1, docx: 1, xls: 1, xlsx: 1, ppt: 1, pptx: 1,
+    csv: 1, txt: 1, mp3: 1, mp4: 1, dmg: 1, exe: 1, apk: 1
+  };
 
   function currentURL() {
     return location.pathname + location.search;
+  }
+
+  function reportSiteSearch() {
+    var params = new URLSearchParams(location.search);
+    var keys = ['q', 'query', 's', 'search', 'keyword'];
+    var term = '';
+
+    for (var i = 0; i < keys.length; i++) {
+      var value = params.get(keys[i]);
+      if (value && value.trim()) {
+        term = value.trim();
+        break;
+      }
+    }
+
+    if (!term) return;
+
+    var key = location.pathname + '|' + term;
+    if (key === lastSearch) return;
+    lastSearch = key;
+    send('custom', { name: 'site_search', props: { term: term } });
   }
 
   function reportPageview(force) {
     var current = currentURL();
     if (!force && current === lastURL) return;
     lastURL = current;
+    scrollMarks = {};
     send('pageview');
+    reportSiteSearch();
   }
 
   // 延迟到本轮渲染结束再上报：SvelteKit 等框架的路由与 <svelte:head>
@@ -149,6 +181,63 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') send('ping');
   });
+
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    var anchor = target && target.closest ? target.closest('a[href]') : null;
+    if (!anchor) return;
+
+    var href = anchor.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return;
+
+    var url;
+    try {
+      url = new URL(anchor.href, location.href);
+    } catch (e) {
+      return;
+    }
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+    var fileName = url.pathname.split('/').pop() || '';
+    var ext = fileName.indexOf('.') >= 0 ? fileName.split('.').pop().toLowerCase() : '';
+
+    if (DOWNLOAD_EXT[ext]) {
+      send('custom', {
+        name: 'file_download',
+        props: { url: url.href, file: fileName, ext: ext }
+      });
+      return;
+    }
+
+    if (url.hostname !== location.hostname) {
+      send('custom', {
+        name: 'outbound_click',
+        props: { url: url.href, host: url.hostname }
+      });
+    }
+  }, true);
+
+  window.addEventListener('scroll', function () {
+    var now = Date.now();
+    if (now - lastScrollAt < 500) return;
+    lastScrollAt = now;
+
+    var doc = document.documentElement;
+    var body = document.body;
+    var height = Math.max(doc.scrollHeight, body ? body.scrollHeight : 0) - window.innerHeight;
+    if (height <= 0) return;
+
+    var top = window.scrollY || doc.scrollTop || 0;
+    var percent = Math.min(100, Math.max(0, Math.round((top / height) * 100)));
+
+    [25, 50, 75, 100].forEach(function (mark) {
+      if (percent >= mark && !scrollMarks[mark]) {
+        scrollMarks[mark] = true;
+        send('custom', { name: 'scroll_depth', props: { percent: mark } });
+      }
+    });
+  }, { passive: true });
 
   window.yu = {
     // 手动补报一次页面浏览（自动去重），适合在框架的 afterNavigate 中调用。

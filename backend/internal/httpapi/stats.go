@@ -109,6 +109,18 @@ func pickInterval(span time.Duration) string {
 	}
 }
 
+func statsFilter(r *http.Request) store.StatsFilter {
+	q := r.URL.Query()
+	return store.StatsFilter{
+		Path:         trimSpace(q.Get("path")),
+		ReferrerHost: trimSpace(q.Get("referrer_host")),
+		Country:      trimSpace(q.Get("country")),
+		Device:       trimSpace(q.Get("device")),
+		Browser:      trimSpace(q.Get("browser")),
+		UTMSource:    trimSpace(q.Get("utm_source")),
+	}
+}
+
 func (s *Server) handleStatsOverview(w http.ResponseWriter, r *http.Request) {
 	site, ok := s.siteAccess(w, r, "member")
 	if !ok {
@@ -122,8 +134,9 @@ func (s *Server) handleStatsOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	filter := statsFilter(r)
 
-	overview, err := s.store.Overview(ctx, site.ID, rn.From, rn.To)
+	overview, err := s.store.Overview(ctx, site.ID, rn.From, rn.To, filter)
 	if err != nil {
 		slog.Error("查询概览失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
@@ -132,29 +145,138 @@ func (s *Server) handleStatsOverview(w http.ResponseWriter, r *http.Request) {
 
 	// 上期：与当前区间等长、紧邻在前的一段，用于环比。
 	span := rn.To.Sub(rn.From)
-	previous, err := s.store.Overview(ctx, site.ID, rn.From.Add(-span), rn.From)
+	previous, err := s.store.Overview(ctx, site.ID, rn.From.Add(-span), rn.From, filter)
 	if err != nil {
 		slog.Warn("查询上期概览失败", "err", err)
 		previous = store.StatsOverview{}
 	}
 
-	series, err := s.store.Series(ctx, site.ID, rn.From, rn.To, rn.Interval, rn.Timezone)
+	series, err := s.store.Series(ctx, site.ID, rn.From, rn.To, rn.Interval, rn.Timezone, filter)
 	if err != nil {
 		slog.Error("查询趋势失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
+	buckets, err := s.store.DurationBuckets(ctx, site.ID, rn.From, rn.To, filter)
+	if err != nil {
+		slog.Error("查询会话时长分布失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"overview": overview,
-		"previous": previous,
-		"series":   series,
+		"overview":         overview,
+		"previous":         previous,
+		"series":           series,
+		"duration_buckets": buckets,
 		"range": map[string]any{
 			"from":     rn.From,
 			"to":       rn.To,
 			"interval": rn.Interval,
 			"timezone": rn.Timezone,
 		},
+	})
+}
+
+func (s *Server) handleWorkspaceStatsOverview(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := s.workspaceAccess(w, r, "member")
+	if !ok {
+		return
+	}
+
+	timezone := strings.TrimSpace(r.URL.Query().Get("timezone"))
+	if timezone == "" {
+		timezone = "UTC"
+	}
+
+	rn, ok := parseRange(r, timezone)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "时间范围不合法")
+		return
+	}
+
+	ctx := r.Context()
+
+	overview, err := s.store.WorkspaceOverview(ctx, ws.ID, rn.From, rn.To)
+	if err != nil {
+		slog.Error("查询工作区概览失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
+		return
+	}
+
+	span := rn.To.Sub(rn.From)
+	previous, err := s.store.WorkspaceOverview(ctx, ws.ID, rn.From.Add(-span), rn.From)
+	if err != nil {
+		slog.Warn("查询工作区上期概览失败", "err", err)
+		previous = store.StatsOverview{}
+	}
+
+	series, err := s.store.WorkspaceSeries(ctx, ws.ID, rn.From, rn.To, rn.Interval, rn.Timezone)
+	if err != nil {
+		slog.Error("查询工作区趋势失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
+		return
+	}
+
+	sites, err := s.store.WorkspaceSiteStats(ctx, ws.ID, rn.From, rn.To)
+	if err != nil {
+		slog.Error("查询站点概览失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
+		return
+	}
+
+	buckets, err := s.store.WorkspaceDurationBuckets(ctx, ws.ID, rn.From, rn.To)
+	if err != nil {
+		slog.Error("查询会话时长分布失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"overview":         overview,
+		"previous":         previous,
+		"series":           series,
+		"sites":            sites,
+		"duration_buckets": buckets,
+		"range": map[string]any{
+			"from":     rn.From,
+			"to":       rn.To,
+			"interval": rn.Interval,
+			"timezone": rn.Timezone,
+		},
+	})
+}
+
+func (s *Server) handleStatsRetention(w http.ResponseWriter, r *http.Request) {
+	site, ok := s.siteAccess(w, r, "member")
+	if !ok {
+		return
+	}
+
+	rn, ok := parseRange(r, site.Timezone)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "时间范围不合法")
+		return
+	}
+
+	interval := strings.ToLower(trimSpace(r.URL.Query().Get("interval")))
+	if interval != "week" {
+		interval = "day"
+	}
+
+	result, err := s.store.Retention(r.Context(), site.ID, rn.From, rn.To, interval, rn.Timezone, statsFilter(r))
+	if err != nil {
+		slog.Error("查询留存失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取留存数据失败")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"interval": result.Interval,
+		"periods":  result.Periods,
+		"cohorts":  result.Cohorts,
+		"range":    rangePayload(rn),
 	})
 }
 
@@ -187,22 +309,23 @@ func (s *Server) handleStatsPages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	filter := statsFilter(r)
 
-	pages, err := s.store.TopPages(ctx, site.ID, rn.From, rn.To)
+	pages, err := s.store.TopPages(ctx, site.ID, rn.From, rn.To, filter)
 	if err != nil {
 		slog.Error("查询页面统计失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	entry, err := s.store.SessionPages(ctx, site.ID, rn.From, rn.To, true)
+	entry, err := s.store.SessionPages(ctx, site.ID, rn.From, rn.To, true, filter)
 	if err != nil {
 		slog.Error("查询入口页失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	exit, err := s.store.SessionPages(ctx, site.ID, rn.From, rn.To, false)
+	exit, err := s.store.SessionPages(ctx, site.ID, rn.From, rn.To, false, filter)
 	if err != nil {
 		slog.Error("查询退出页失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
@@ -229,24 +352,32 @@ func (s *Server) handleStatsSources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	filter := statsFilter(r)
 
-	referrers, err := s.store.Referrers(ctx, site.ID, rn.From, rn.To)
+	referrers, err := s.store.Referrers(ctx, site.ID, rn.From, rn.To, filter)
 	if err != nil {
 		slog.Error("查询来源失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	channels, err := s.store.Channels(ctx, site.ID, rn.From, rn.To)
+	referrerURLs, err := s.store.ReferrerURLs(ctx, site.ID, rn.From, rn.To, filter)
+	if err != nil {
+		slog.Error("查询来源页面失败", "err", err)
+		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
+		return
+	}
+
+	channels, err := s.store.Channels(ctx, site.ID, rn.From, rn.To, filter)
 	if err != nil {
 		slog.Error("查询渠道失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	utm := make(map[string]any, 3)
-	for _, field := range []string{"utm_source", "utm_medium", "utm_campaign"} {
-		items, err := s.store.UTMStats(ctx, site.ID, rn.From, rn.To, field)
+	utm := make(map[string]any, 5)
+	for _, field := range []string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"} {
+		items, err := s.store.UTMStats(ctx, site.ID, rn.From, rn.To, field, filter)
 		if err != nil {
 			slog.Error("查询 UTM 失败", "err", err, "field", field)
 			writeError(w, http.StatusInternalServerError, "读取统计数据失败")
@@ -256,11 +387,14 @@ func (s *Server) handleStatsSources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"referrers":    referrers,
-		"channels":     channels,
-		"utm_source":   utm["utm_source"],
-		"utm_medium":   utm["utm_medium"],
-		"utm_campaign": utm["utm_campaign"],
+		"referrers":     referrers,
+		"referrer_urls": referrerURLs,
+		"channels":      channels,
+		"utm_source":    utm["utm_source"],
+		"utm_medium":    utm["utm_medium"],
+		"utm_campaign":  utm["utm_campaign"],
+		"utm_term":      utm["utm_term"],
+		"utm_content":   utm["utm_content"],
 	})
 }
 
@@ -277,10 +411,11 @@ func (s *Server) handleStatsAudience(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	out := make(map[string]any, 6)
+	filter := statsFilter(r)
+	out := make(map[string]any, 11)
 
-	for _, field := range []string{"browser", "os", "device", "screen", "language", "country"} {
-		items, err := s.store.Breakdown(ctx, site.ID, rn.From, rn.To, field)
+	for _, field := range []string{"browser", "browser_version", "os", "os_version", "device", "device_brand", "screen", "language", "country", "region", "city"} {
+		items, err := s.store.Breakdown(ctx, site.ID, rn.From, rn.To, field, filter)
 		if err != nil {
 			slog.Error("查询访客画像失败", "err", err, "field", field)
 			writeError(w, http.StatusInternalServerError, "读取统计数据失败")
@@ -304,7 +439,7 @@ func (s *Server) handleStatsEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := s.store.CustomEvents(r.Context(), site.ID, rn.From, rn.To)
+	events, err := s.store.CustomEvents(r.Context(), site.ID, rn.From, rn.To, statsFilter(r))
 	if err != nil {
 		slog.Error("查询自定义事件失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
@@ -333,15 +468,16 @@ func (s *Server) handleStatsEventDetail(w http.ResponseWriter, r *http.Request) 
 	}
 
 	ctx := r.Context()
+	filter := statsFilter(r)
 
-	series, err := s.store.EventSeries(ctx, site.ID, rn.From, rn.To, name, rn.Interval, rn.Timezone)
+	series, err := s.store.EventSeries(ctx, site.ID, rn.From, rn.To, name, rn.Interval, rn.Timezone, filter)
 	if err != nil {
 		slog.Error("查询事件趋势失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	props, err := s.store.EventProps(ctx, site.ID, rn.From, rn.To, name)
+	props, err := s.store.EventProps(ctx, site.ID, rn.From, rn.To, name, filter)
 	if err != nil {
 		slog.Error("查询事件属性失败", "err", err)
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")

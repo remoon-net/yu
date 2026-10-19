@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { analyticsApi } from '#lib/api/analytics.js';
-	import type { SourcesResponse } from '#lib/api/types.js';
+	import type { SourcesResponse, StatsFilter } from '#lib/api/types.js';
 	import BarList from '#lib/components/BarList.svelte';
 
 	let {
 		workspaceId,
 		siteId,
-		range
+		range,
+		filter
 	}: {
 		workspaceId: string;
 		siteId: string;
 		range: string;
+		filter?: StatsFilter;
 	} = $props();
 
 	let data = $state<SourcesResponse | null>(null);
@@ -20,12 +22,13 @@
 		const ws = workspaceId;
 		const site = siteId;
 		const span = range;
+		const activeFilter = filter;
 		let cancelled = false;
 
 		error = '';
 
 		analyticsApi
-			.sources(ws, site, span)
+			.sources(ws, site, span, activeFilter)
 			.then((result) => {
 				if (!cancelled) data = result;
 			})
@@ -50,6 +53,11 @@
 	</div>
 
 	<div class="card">
+		<div class="card-head"><h2>来源页面</h2></div>
+		<BarList items={data?.referrer_urls ?? []} emptyText="暂无来源页面" />
+	</div>
+
+	<div class="card">
 		<div class="card-head"><h2>渠道</h2></div>
 		<BarList items={data?.channels ?? []} emptyText="暂无渠道数据" />
 	</div>
@@ -67,5 +75,15 @@
 	<div class="card">
 		<div class="card-head"><h2>UTM Campaign</h2></div>
 		<BarList items={data?.utm_campaign ?? []} emptyText="暂无 UTM 数据" />
+	</div>
+
+	<div class="card">
+		<div class="card-head"><h2>UTM Term</h2></div>
+		<BarList items={data?.utm_term ?? []} emptyText="暂无 UTM 数据" />
+	</div>
+
+	<div class="card">
+		<div class="card-head"><h2>UTM Content</h2></div>
+		<BarList items={data?.utm_content ?? []} emptyText="暂无 UTM 数据" />
 	</div>
 </div>

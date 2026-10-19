@@ -28,7 +28,7 @@ func TestStaticFiles(t *testing.T) {
 	write("_app/immutable/app.js", "console.log(1)")
 	write("collect.js", "/* collect */")
 
-	h := New(config.Config{StaticDir: dir}, nil, nil)
+	h := New(config.Config{StaticDir: dir}, nil, nil, nil)
 
 	tests := []struct {
 		name        string
@@ -70,7 +70,7 @@ func TestStaticFiles(t *testing.T) {
 }
 
 func TestStaticFilesDisabledWhenEmpty(t *testing.T) {
-	h := New(config.Config{StaticDir: t.TempDir()}, nil, nil)
+	h := New(config.Config{StaticDir: t.TempDir()}, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

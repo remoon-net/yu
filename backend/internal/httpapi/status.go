@@ -366,37 +366,37 @@ func (s *Server) handlePublicShare(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	overview, err := s.store.Overview(ctx, site.ID, rn.From, rn.To)
+	overview, err := s.store.Overview(ctx, site.ID, rn.From, rn.To, store.StatsFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	series, err := s.store.Series(ctx, site.ID, rn.From, rn.To, rn.Interval, rn.Timezone)
+	series, err := s.store.Series(ctx, site.ID, rn.From, rn.To, rn.Interval, rn.Timezone, store.StatsFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	pages, err := s.store.TopPages(ctx, site.ID, rn.From, rn.To)
+	pages, err := s.store.TopPages(ctx, site.ID, rn.From, rn.To, store.StatsFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	referrers, err := s.store.Referrers(ctx, site.ID, rn.From, rn.To)
+	referrers, err := s.store.Referrers(ctx, site.ID, rn.From, rn.To, store.StatsFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	channels, err := s.store.Channels(ctx, site.ID, rn.From, rn.To)
+	channels, err := s.store.Channels(ctx, site.ID, rn.From, rn.To, store.StatsFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
 	}
 
-	devices, err := s.store.Breakdown(ctx, site.ID, rn.From, rn.To, "device")
+	devices, err := s.store.Breakdown(ctx, site.ID, rn.From, rn.To, "device", store.StatsFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "读取统计数据失败")
 		return
