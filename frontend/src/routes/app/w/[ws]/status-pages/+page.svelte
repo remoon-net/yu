@@ -13,6 +13,7 @@
 
 	let pages = $state<StatusPage[]>([]);
 	let monitors = $state<Monitor[]>([]);
+	let loading = $state(true);
 	let error = $state('');
 	let notice = $state('');
 
@@ -39,14 +40,18 @@
 
 	$effect(() => {
 		if (!workspace) return;
+		loading = true;
 		void load(workspace.id);
 	});
 
 	async function load(workspaceId: string) {
+		error = '';
 		try {
 			[pages, monitors] = await Promise.all([statusApi.list(workspaceId), monitorApi.list(workspaceId)]);
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载状态页失败';
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -252,7 +257,9 @@
 	</div>
 {/each}
 
-{#if pages.length === 0}
+{#if loading}
+	<div class="card"><p class="empty">加载中…</p></div>
+{:else if pages.length === 0}
 	<div class="card"><p class="empty">还没有状态页。</p></div>
 {/if}
 

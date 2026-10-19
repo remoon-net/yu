@@ -15,6 +15,7 @@
 	const manageable = $derived(canManage(workspace?.role));
 
 	let monitors = $state<Monitor[]>([]);
+	let loading = $state(true);
 	let error = $state('');
 	let formError = $state('');
 	let showForm = $state(false);
@@ -47,14 +48,18 @@
 
 	$effect(() => {
 		if (!workspace) return;
+		loading = true;
 		void load(workspace.id);
 	});
 
 	async function load(workspaceId: string) {
+		error = '';
 		try {
 			monitors = await monitorApi.list(workspaceId);
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载监控失败';
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -108,6 +113,7 @@
 	}
 
 	function label(monitor: Monitor) {
+		if (!monitor.enabled) return '已停用';
 		if (monitor.last_status === 'up') return '正常';
 		if (monitor.last_status === 'down') return '故障';
 		return '待检测';
@@ -171,7 +177,9 @@
 	</form>
 </Modal>
 
-{#if monitors.length === 0}
+{#if loading}
+	<div class="card"><p class="empty">加载中…</p></div>
+{:else if monitors.length === 0}
 	<div class="card"><p class="empty">还没有监控项。</p></div>
 {:else}
 	<div class="card" style="overflow-x: auto">
@@ -179,7 +187,7 @@
 			<thead><tr><th>监控</th><th>状态</th><th class="num">延迟</th><th>最近检测</th><th></th></tr></thead>
 			<tbody>
 				{#each monitors as monitor (monitor.id)}
-					<tr>
+					<tr class:disabled={!monitor.enabled}>
 						<td>
 							<div>{monitor.name}</div>
 							<div class="small muted">{monitor.type} · {monitor.group_name || '未分组'} · 每 {formatInterval(monitor.interval_sec)}</div>
@@ -190,8 +198,12 @@
 							{/if}
 						</td>
 						<td>
-							<span class="badge" class:ok={monitor.last_status === 'up'}>{label(monitor)}</span>
-							{#if monitor.last_error}<div class="small muted" title={monitor.last_error}>{monitor.last_error.slice(0, 48)}</div>{/if}
+							<span class="badge" class:ok={monitor.enabled && monitor.last_status === 'up'}>{label(monitor)}</span>
+							{#if !monitor.enabled}
+								<div class="small muted">已暂停调度，不会发起探测</div>
+							{:else if monitor.last_error}
+								<div class="small muted" title={monitor.last_error}>{monitor.last_error.slice(0, 48)}</div>
+							{/if}
 						</td>
 						<td class="num">{monitor.last_latency_ms ?? '—'} ms</td>
 						<td class="muted small">{monitor.last_checked_at ? new Date(monitor.last_checked_at).toLocaleString('zh-CN') : '—'}</td>
@@ -219,5 +231,9 @@
 	.monitor-tags :global(.badge) {
 		font-size: 11px;
 		padding: 1px 7px;
+	}
+
+	tr.disabled {
+		opacity: 0.58;
 	}
 </style>

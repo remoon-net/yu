@@ -465,8 +465,9 @@ stateDiagram-v2
 
 ```jsonc
 // smtp：连接信息在渠道内配置，未填 host 时回退到环境变量
+// tls=true 表示隐式 TLS（SMTPS，通常 465）；否则自动尝试 STARTTLS
 { "host": "smtp.example.com", "port": 587, "username": "no-reply@example.com",
-  "password": "...", "from": "Yu <no-reply@example.com>",
+  "password": "...", "from": "Yu <no-reply@example.com>", "tls": false,
   "to": ["ops@example.com"] }
 
 // webhook

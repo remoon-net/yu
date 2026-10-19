@@ -18,6 +18,8 @@
 	let siteId = $state('');
 	let links = $state<ShortLink[]>([]);
 	let stats = $state<Record<string, ShortLinkStats>>({});
+	let sitesLoading = $state(true);
+	let linksLoading = $state(true);
 	let error = $state('');
 	let notice = $state('');
 
@@ -45,20 +47,28 @@
 
 	$effect(() => {
 		if (!workspace) return;
+		sitesLoading = true;
+		siteId = '';
+		links = [];
+		stats = {};
 		void loadSites(workspace.id);
 	});
 
 	$effect(() => {
 		if (!workspace || !siteId) return;
+		linksLoading = true;
 		void loadLinks(workspace.id, siteId);
 	});
 
 	async function loadSites(workspaceId: string) {
+		error = '';
 		try {
 			sites = await api.get<Site[]>(`/api/workspaces/${workspaceId}/sites`);
 			if (!siteId && sites.length > 0) siteId = sites[0].id;
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载站点失败';
+		} finally {
+			sitesLoading = false;
 		}
 	}
 
@@ -69,6 +79,8 @@
 			stats = Object.fromEntries((data.stats ?? []).map((item) => [item.slug, item]));
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载短链失败';
+		} finally {
+			linksLoading = false;
 		}
 	}
 
@@ -275,8 +287,12 @@
 {#if error}<div class="error" style="margin-bottom: 16px">{error}</div>{/if}
 {#if notice}<div class="badge ok" style="margin-bottom: 16px">{notice}</div>{/if}
 
-{#if sites.length === 0}
+{#if sitesLoading}
+	<div class="card"><p class="empty">加载中…</p></div>
+{:else if sites.length === 0}
 	<div class="card"><p class="empty">还没有站点，请先在「站点设置」中添加站点。</p></div>
+{:else if linksLoading}
+	<div class="card"><p class="empty">加载中…</p></div>
 {:else if links.length === 0}
 	<div class="card"><p class="empty">还没有短链。</p></div>
 {:else}

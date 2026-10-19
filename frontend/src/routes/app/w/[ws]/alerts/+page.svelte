@@ -15,6 +15,7 @@
 	let incidents = $state<Incident[]>([]);
 	let windows = $state<MaintenanceWindow[]>([]);
 	let monitors = $state<Monitor[]>([]);
+	let loading = $state(true);
 	let error = $state('');
 	let notice = $state('');
 	let showChannel = $state(false);
@@ -33,6 +34,7 @@
 	let smtpPass = $state('');
 	let smtpFrom = $state('');
 	let smtpTo = $state('');
+	let smtpTLS = $state(false);
 
 	let windowTitle = $state('');
 	let windowStart = $state('');
@@ -43,10 +45,12 @@
 
 	$effect(() => {
 		if (!workspace) return;
+		loading = true;
 		void load(workspace.id);
 	});
 
 	async function load(workspaceId: string) {
+		error = '';
 		try {
 			[channels, incidents, windows, monitors] = await Promise.all([
 				alertApi.channels(workspaceId),
@@ -56,6 +60,8 @@
 			]);
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载告警数据失败';
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -69,6 +75,7 @@
 		smtpPass = '';
 		smtpFrom = '';
 		smtpTo = '';
+		smtpTLS = false;
 		channelEnabled = true;
 		channelError = '';
 	}
@@ -93,9 +100,11 @@
 				username?: string;
 				from?: string;
 				to?: string[];
+				tls?: boolean;
 			};
 			smtpHost = config.host ?? '';
-			smtpPort = config.port ?? 587;
+			smtpTLS = !!config.tls;
+			smtpPort = config.port ?? (smtpTLS ? 465 : 587);
 			smtpUser = config.username ?? '';
 			smtpFrom = config.from ?? '';
 			smtpTo = (config.to ?? []).join(', ');
@@ -118,6 +127,7 @@
 						username: smtpUser.trim(),
 						password: smtpPass,
 						from: smtpFrom.trim(),
+						tls: smtpTLS,
 						to: smtpTo
 							.split(',')
 							.map((v) => v.trim())
@@ -170,8 +180,8 @@
 
 	function configSummary(channel: Channel) {
 		if (channel.type === 'smtp') {
-			const config = channel.config as { host?: string; port?: number; to?: string[] };
-			return `${config.host || '未配置主机'}:${config.port || 587} → ${(config.to ?? []).join(', ')}`;
+			const config = channel.config as { host?: string; port?: number; to?: string[]; tls?: boolean };
+			return `${config.host || '未配置主机'}:${config.port || (config.tls ? 465 : 587)}${config.tls ? ' · TLS' : ''} → ${(config.to ?? []).join(', ')}`;
 		}
 		return String((channel.config as { url?: string }).url ?? '');
 	}
@@ -271,7 +281,9 @@
 			<h2>通知渠道</h2>
 			{#if manageable}<button class="btn btn-sm" type="button" onclick={openCreateChannel}>添加渠道</button>{/if}
 		</div>
-		{#if channels.length === 0}
+		{#if loading}
+			<p class="empty">加载中…</p>
+		{:else if channels.length === 0}
 			<p class="empty">尚未配置通知渠道</p>
 		{:else}
 			<table class="table">
@@ -321,6 +333,20 @@
 							<label class="field">收件人（逗号分隔）<input class="input" bind:value={smtpTo} required placeholder="a@example.com, b@example.com" /></label>
 						{/if}
 					</div>
+					{#if channelType === 'smtp'}
+						<label class="row" style="margin-top: 12px; gap: 8px; font-size: 13px">
+							<input
+								type="checkbox"
+								bind:checked={smtpTLS}
+								onchange={(event) => {
+									if (event.currentTarget.checked && smtpPort === 587) smtpPort = 465;
+									if (!event.currentTarget.checked && smtpPort === 465) smtpPort = 587;
+								}}
+							/>
+							使用 SSL/TLS（隐式加密）
+							<span class="small muted">通常端口 465；不勾选时自动尝试 STARTTLS</span>
+						</label>
+					{/if}
 					<label class="row" style="margin-top: 14px; gap: 8px; font-size: 13px">
 						<input type="checkbox" bind:checked={channelEnabled} /> 启用该渠道
 					</label>
@@ -348,7 +374,9 @@
 
 	<div class="card">
 		<div class="card-head"><h2>故障事件</h2></div>
-		{#if incidents.length === 0}
+		{#if loading}
+			<p class="empty">加载中…</p>
+		{:else if incidents.length === 0}
 			<p class="empty">暂无事件</p>
 		{:else}
 			<table class="table">
@@ -377,7 +405,9 @@
 			<h2>维护窗口</h2>
 			{#if manageable}<button class="btn btn-sm" type="button" onclick={() => { windowError = ''; showWindow = true; }}>创建维护窗口</button>{/if}
 		</div>
-		{#if windows.length === 0}
+		{#if loading}
+			<p class="empty">加载中…</p>
+		{:else if windows.length === 0}
 			<p class="empty">暂无维护窗口</p>
 		{:else}
 			<table class="table">

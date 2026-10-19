@@ -28,6 +28,7 @@ type SMTPChannelConfig struct {
 	Password string   `json:"password"`
 	From     string   `json:"from"`
 	To       []string `json:"to"`
+	TLS      bool     `json:"tls"`
 }
 
 // WebhookChannelConfig 是 Webhook 渠道配置。
@@ -178,6 +179,7 @@ func parseSMTPConfig(raw json.RawMessage) (SMTPChannelConfig, mailer.Options, er
 		Username: strings.TrimSpace(cfg.Username),
 		Password: cfg.Password,
 		From:     strings.TrimSpace(cfg.From),
+		TLS:      cfg.TLS,
 	}
 	if options.From == "" {
 		options.From = options.Username

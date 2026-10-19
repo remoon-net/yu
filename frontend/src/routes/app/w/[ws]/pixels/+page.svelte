@@ -17,6 +17,8 @@
 	let siteId = $state('');
 	let pixels = $state<Pixel[]>([]);
 	let stats = $state<Record<string, PixelStats>>({});
+	let sitesLoading = $state(true);
+	let pixelsLoading = $state(true);
 	let error = $state('');
 	let notice = $state('');
 
@@ -40,20 +42,28 @@
 
 	$effect(() => {
 		if (!workspace) return;
+		sitesLoading = true;
+		siteId = '';
+		pixels = [];
+		stats = {};
 		void loadSites(workspace.id);
 	});
 
 	$effect(() => {
 		if (!workspace || !siteId) return;
+		pixelsLoading = true;
 		void loadPixels(workspace.id, siteId);
 	});
 
 	async function loadSites(workspaceId: string) {
+		error = '';
 		try {
 			sites = await api.get<Site[]>(`/api/workspaces/${workspaceId}/sites`);
 			if (!siteId && sites.length > 0) siteId = sites[0].id;
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载站点失败';
+		} finally {
+			sitesLoading = false;
 		}
 	}
 
@@ -64,6 +74,8 @@
 			stats = Object.fromEntries((data.stats ?? []).map((item) => [item.slug, item]));
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载像素失败';
+		} finally {
+			pixelsLoading = false;
 		}
 	}
 
@@ -228,8 +240,12 @@
 {#if error}<div class="error" style="margin-bottom: 16px">{error}</div>{/if}
 {#if notice}<div class="badge ok" style="margin-bottom: 16px">{notice}</div>{/if}
 
-{#if sites.length === 0}
+{#if sitesLoading}
+	<div class="card"><p class="empty">加载中…</p></div>
+{:else if sites.length === 0}
 	<div class="card"><p class="empty">还没有站点，请先在「站点设置」中添加站点。</p></div>
+{:else if pixelsLoading}
+	<div class="card"><p class="empty">加载中…</p></div>
 {:else if pixels.length === 0}
 	<div class="card"><p class="empty">还没有遥测像素。</p></div>
 {:else}

@@ -39,6 +39,7 @@
 
 	let data = $state<MonitorStatsResponse | null>(null);
 	let checks = $state<MonitorCheck[]>([]);
+	let statsLoading = $state(true);
 	let range = $state('24h');
 	let error = $state('');
 	let editError = $state('');
@@ -88,6 +89,8 @@
 		const span = range;
 		let cancelled = false;
 
+		statsLoading = true;
+
 		Promise.all([monitorApi.stats(wsId, monitorId, span), monitorApi.checks(wsId, monitorId, span)])
 			.then(([stats, checkList]) => {
 				if (cancelled) return;
@@ -96,6 +99,9 @@
 			})
 			.catch((err) => {
 				if (!cancelled) error = err instanceof Error ? err.message : '加载统计失败';
+			})
+			.finally(() => {
+				if (!cancelled) statsLoading = false;
 			});
 
 		return () => {
@@ -390,16 +396,18 @@
 {/if}
 
 <div class="stats-grid">
-	<StatCard label="可用率" value={`${(data?.stats.availability ?? 0).toFixed(2)}%`} />
-	<StatCard label="检测次数" value={formatNumber(data?.stats.checks)} />
-	<StatCard label="失败次数" value={formatNumber(data?.stats.down)} />
-	<StatCard label="P50" value={`${Math.round(data?.stats.p50 ?? 0)} ms`} />
-	<StatCard label="P95" value={`${Math.round(data?.stats.p95 ?? 0)} ms`} />
+	<StatCard label="可用率" value={statsLoading ? '—' : `${(data?.stats.availability ?? 0).toFixed(2)}%`} />
+	<StatCard label="检测次数" value={statsLoading ? '—' : formatNumber(data?.stats.checks)} />
+	<StatCard label="失败次数" value={statsLoading ? '—' : formatNumber(data?.stats.down)} />
+	<StatCard label="P50" value={statsLoading ? '—' : `${Math.round(data?.stats.p50 ?? 0)} ms`} />
+	<StatCard label="P95" value={statsLoading ? '—' : `${Math.round(data?.stats.p95 ?? 0)} ms`} />
 </div>
 
 <div class="card">
 	<div class="card-head"><h2>响应时间趋势</h2></div>
-	{#if data && data.stats.series.length > 0}
+	{#if statsLoading}
+		<p class="empty">加载中…</p>
+	{:else if data && data.stats.series.length > 0}
 		<Chart {option} height="280px" />
 	{:else}
 		<p class="empty">暂无数据</p>
@@ -408,7 +416,9 @@
 
 <div class="card" style="margin-top: 16px; overflow-x: auto">
 	<div class="card-head"><h2>最近检测</h2></div>
-	{#if checks.length === 0}
+	{#if statsLoading}
+		<p class="empty">加载中…</p>
+	{:else if checks.length === 0}
 		<p class="empty">暂无记录</p>
 	{:else}
 		<table class="table">

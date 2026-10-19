@@ -15,6 +15,7 @@
 
 	let members = $state<Member[]>([]);
 	let invites = $state<Invite[]>([]);
+	let loading = $state(true);
 	let error = $state('');
 	let notice = $state('');
 	let busy = $state(false);
@@ -31,6 +32,7 @@
 
 	$effect(() => {
 		if (!workspace) return;
+		loading = true;
 		void loadAll(workspace.id);
 	});
 
@@ -53,6 +55,8 @@
 			apiKeys = keyList;
 		} catch (err) {
 			error = err instanceof Error ? err.message : '加载成员失败';
+		} finally {
+			loading = false;
 		}
 	}
 
@@ -223,6 +227,9 @@
 	<div class="card">
 		<div class="card-head"><h2>成员</h2></div>
 
+		{#if loading}
+			<p class="empty">加载中…</p>
+		{:else}
 		<table class="table">
 			<thead>
 				<tr>
@@ -267,6 +274,7 @@
 				{/each}
 			</tbody>
 		</table>
+		{/if}
 	</div>
 
 	{#if manageable && workspace}
@@ -315,7 +323,9 @@
 		<div class="card">
 			<div class="card-head"><h2>待接受的邀请</h2></div>
 
-			{#if invites.length === 0}
+			{#if loading}
+				<p class="empty">加载中…</p>
+			{:else if invites.length === 0}
 				<div class="empty">
 					<span class="empty-icon"><Icon name="user" size={20} /></span>
 					<p>暂无待接受的邀请</p>
@@ -351,7 +361,9 @@
 		<div class="card">
 			<div class="card-head"><h2>API Key</h2></div>
 
-			{#if apiKeys.length === 0}
+			{#if loading}
+				<p class="empty">加载中…</p>
+			{:else if apiKeys.length === 0}
 				<div class="empty">
 					<span class="empty-icon"><Icon name="link" size={20} /></span>
 					<p>还没有 API Key</p>
