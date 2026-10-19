@@ -52,8 +52,8 @@ all: docker
 
 frontend:
 	@echo "==> 构建前端"
-	cd frontend && { [ -x node_modules/.bin/vite ] && [ ! package-lock.json -nt node_modules/.bin/vite ] || npm ci; }
-	cd frontend && npm run build
+	cd frontend && pnpm ci
+	cd frontend && pnpm run build
 
 backend:
 	@echo "==> 构建后端 $(VERSION) ($(COMMIT))"
@@ -102,7 +102,7 @@ check:
 	if [ -n "$$files" ]; then echo "需要 gofmt: $$files" >&2; exit 1; fi
 	go build ./...
 	go test ./...
-	cd frontend && npm run check
+	cd frontend && pnpm run check
 
 clean:
 	rm -rf $(DIST)

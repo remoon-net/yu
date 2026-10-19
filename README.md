@@ -85,8 +85,8 @@ go run ./backend/cmd/server
 
 ```bash
 cd frontend
-npm install
-YU_API=http://127.0.0.1:8080 npm run dev
+pnpm install
+YU_API=http://127.0.0.1:8080 pnpm run dev
 ```
 
 访问 Vite 输出的地址，使用上面的管理员账号登录。
@@ -101,7 +101,7 @@ export YU_ALLOWED_ORIGINS='http://localhost:5173'
 
 ```bash
 go build -o yu-server ./backend/cmd/server
-cd frontend && npm ci && npm run build
+cd frontend && pnpm ci && pnpm run build
 ```
 
 Caddy 示例：
@@ -298,8 +298,8 @@ gofmt -l backend
 
 # 前端
 cd frontend
-npm run check
-npm run build
+pnpm run check
+pnpm run build
 ```
 
 `go test` 目前覆盖纯逻辑：User-Agent 解析与渠道判定、短链/像素的标识与目标校验、监控的 JSONPath 断言。

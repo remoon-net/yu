@@ -647,7 +647,7 @@ YU_PROBE_CONCURRENCY=32
 ## 12. 部署
 
 - 后端：单个 Go 二进制（`CGO_ENABLED=0`），systemd 或容器运行
-- 前端：`npm run build` 产出静态文件目录
+- 前端：`pnpm run build` 产出静态文件目录
 - 数据库：PostgreSQL 15+
 - Caddy 组合（示例）：
 
