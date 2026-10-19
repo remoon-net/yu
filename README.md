@@ -18,6 +18,7 @@ Tianji 精简版：网站统计 + 服务监控 + 短链/遥测，前后端分离
 - 可用率、P50/P95/P99、状态时间轴
 - 连续失败告警、恢复通知、静默期、维护窗口抑制
 - SSL 到期提醒、故障事件与手动 incident、公开状态页
+- 状态徽章 `/monitor/<workspace>/<monitor>/badge.svg`，可嵌入 README 或站点
 
 **短链与遥测**
 
@@ -34,7 +35,7 @@ Tianji 精简版：网站统计 + 服务监控 + 短链/遥测，前后端分离
 
 - 后端：Go + chi + pgx + PostgreSQL，内嵌 SQL 迁移
 - 前端：SvelteKit 3 + Svelte 5 + TypeScript + Luxon + ECharts，`adapter-static` 静态构建
-- 部署：静态文件由 Caddy 托管，`/api/*`、`/s/*`、`/t/*` 反代到 Go
+- 部署：静态文件由 Caddy 托管，`/api/*`、`/s/*`、`/t/*`、`/monitor/*` 反代到 Go
 
 ## 目录
 
@@ -117,6 +118,9 @@ yu.example.com {
     handle /t/* {
         reverse_proxy 127.0.0.1:8080
     }
+    handle /monitor/* {
+        reverse_proxy 127.0.0.1:8080
+    }
     handle {
         root * /var/www/yu
         try_files {path} /index.html
@@ -155,7 +159,7 @@ make push IMAGE=registry.example.com/shynome/yu
 {"status":"ok","version":"v1.2.3","commit":"1a2b3c4","buildTime":"2026-10-19T06:00:00Z","static":true}
 ```
 
-容器内前端产物位于 `/app/public`（由 `YU_STATIC_DIR` 指定），Go 服务直接托管页面、`/collect.js`、`/s/*` 与 `/t/*`，不再需要 Caddy。未打包前端时目录为空，服务自动退化为纯 API。
+容器内前端产物位于 `/app/public`（由 `YU_STATIC_DIR` 指定），Go 服务直接托管页面、`/collect.js`、`/s/*`、`/t/*` 与 `/monitor/*` 徽章，不再需要 Caddy。未打包前端时目录为空，服务自动退化为纯 API。
 
 使用 compose 一键启动（PostgreSQL + Yu）：
 

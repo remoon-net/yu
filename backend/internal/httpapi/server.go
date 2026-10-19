@@ -54,6 +54,8 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 	// 公开短链跳转（反代或内置静态托管均可）
 	r.Get("/s/{slug}", s.handleShortLinkRedirect)
 	r.Get("/t/{file}", s.handlePixelImage)
+	// 公开监控状态徽章
+	r.Get("/monitor/{workspaceID}/{monitorID}/badge.svg", s.handleMonitorBadge)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/login", s.handleLogin)

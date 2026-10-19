@@ -26,6 +26,14 @@
 		monitor?.muted_until ? DateTime.fromISO(monitor.muted_until) : null
 	);
 	const isMuted = $derived(!!mutedUntil && mutedUntil > DateTime.now());
+	const badgeURL = $derived(
+		monitor && workspace
+			? `${page.url.origin}/monitor/${workspace.id}/${monitor.id}/badge.svg`
+			: ''
+	);
+	const badgeMarkdown = $derived(
+		badgeURL ? `![${monitor?.name ?? 'monitor'}](${badgeURL})` : ''
+	);
 
 	let data = $state<MonitorStatsResponse | null>(null);
 	let checks = $state<MonitorCheck[]>([]);
@@ -35,6 +43,8 @@
 	let notice = $state('');
 
 	let showEdit = $state(false);
+	let showBadge = $state(false);
+	let badgeCopied = $state(false);
 	let autoOpened = false;
 	let saving = $state(false);
 	let editName = $state('');
@@ -224,6 +234,21 @@
 		}
 	}
 
+	function openBadge() {
+		badgeCopied = false;
+		showBadge = true;
+	}
+
+	async function copyBadge() {
+		try {
+			await navigator.clipboard.writeText(badgeURL);
+			badgeCopied = true;
+			setTimeout(() => (badgeCopied = false), 1500);
+		} catch {
+			error = '复制失败，请手动选择文本';
+		}
+	}
+
 	async function remove() {
 		if (!workspace || !monitor) return;
 
@@ -258,6 +283,9 @@
 	</div>
 	<div class="row">
 		<RangePicker bind:value={range} />
+		{#if monitor}
+			<button class="btn btn-sm" type="button" onclick={openBadge}>徽章</button>
+		{/if}
 		{#if manageable}
 			<button class="btn btn-sm" type="button" onclick={openEdit}>编辑</button>
 			{#if isMuted}
@@ -316,6 +344,29 @@
 				<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '保存中…' : '保存'}</button>
 			</div>
 		</form>
+	</Modal>
+
+	<Modal open={showBadge} title="监控徽章" onclose={() => (showBadge = false)}>
+		<p class="small muted" style="margin-top: 0">
+			将徽章嵌入 README 或站点，即可实时展示该监控的状态。
+		</p>
+		<div class="row" style="margin-bottom: 14px">
+			<img src={badgeURL} alt="监控状态徽章" height="20" />
+		</div>
+		<label class="field">
+			图片地址
+			<input class="input" readonly value={badgeURL} />
+		</label>
+		<label class="field" style="margin-top: 10px">
+			Markdown
+			<input class="input" readonly value={badgeMarkdown} />
+		</label>
+		<div class="modal-actions">
+			<button class="btn" type="button" onclick={() => (showBadge = false)}>关闭</button>
+			<button class="btn btn-primary" type="button" onclick={copyBadge}>
+				{badgeCopied ? '已复制' : '复制地址'}
+			</button>
+		</div>
 	</Modal>
 {/if}
 
