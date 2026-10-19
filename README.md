@@ -14,7 +14,7 @@ Tianji 精简版：网站统计 + 服务监控 + 短链/遥测，前后端分离
 
 **服务监控**
 
-- HTTP / TCP / Ping / DNS 探测，支持状态码、响应体、JSONPath、耗时断言
+- HTTP / TCP / Ping / DNS 探测，支持自定义请求方法、Header 与请求体，状态码、响应体、JSONPath、耗时断言
 - 可用率、P50/P95/P99、状态时间轴
 - 连续失败告警、恢复通知、静默期、维护窗口抑制
 - SSL 到期提醒、故障事件与手动 incident、公开状态页
@@ -302,7 +302,7 @@ pnpm run check
 pnpm run build
 ```
 
-`go test` 目前覆盖纯逻辑：User-Agent 解析与渠道判定、短链/像素的标识与目标校验、监控的 JSONPath 断言。
+`go test` 目前覆盖纯逻辑：User-Agent 解析与渠道判定、短链/像素的标识与目标校验、监控的 JSONPath 与 HTTP 配置校验。
 
 ## 注意事项
 

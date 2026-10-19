@@ -7,6 +7,7 @@
 	import { monitorApi } from '#lib/api/monitors.js';
 	import type { Monitor, MonitorCheck, MonitorStatsResponse } from '#lib/api/types.js';
 	import Chart from '#lib/components/Chart.svelte';
+	import HttpOptions from '#lib/components/HttpOptions.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import RangePicker from '#lib/components/RangePicker.svelte';
 	import StatCard from '#lib/components/StatCard.svelte';
@@ -14,6 +15,7 @@
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { formatInterval, formatTimeout, parseInterval, parseTimeout } from '#lib/utils/duration.js';
 	import { formatNumber } from '#lib/utils/format.js';
+	import { buildHttpConfig, emptyHttpForm, httpFormFromConfig } from '#lib/utils/httpConfig.js';
 	import { parseTags } from '#lib/utils/tags.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -59,6 +61,7 @@
 	let editTags = $state('');
 	let editSSLDays = $state(14);
 	let editEnabled = $state(true);
+	let editHttp = $state(emptyHttpForm());
 
 	$effect(() => {
 		if (!workspace || !monitorId) return;
@@ -166,6 +169,7 @@
 
 		if (monitor.type === 'http') {
 			editTarget = String(config.url ?? '');
+			editHttp = httpFormFromConfig(config);
 		} else if (monitor.type === 'tcp') {
 			editTarget = String(config.host ?? '');
 			editPort = Number(config.port ?? 443);
@@ -196,16 +200,28 @@
 		}
 
 		editError = '';
-		const config = { ...(monitor.config as Record<string, unknown>) };
-		if (monitor.type === 'http') config.url = editTarget.trim();
-		if (monitor.type === 'tcp') {
-			config.host = editTarget.trim();
-			config.port = Number(editPort);
-		}
-		if (monitor.type === 'ping') config.host = editTarget.trim();
-		if (monitor.type === 'dns') {
-			config.name = editTarget.trim();
-			config.record_type = editRecordType;
+
+		let config: Record<string, unknown>;
+
+		if (monitor.type === 'http') {
+			const built = buildHttpConfig(editTarget, editHttp);
+			if (built.error) {
+				editError = built.error;
+				return;
+			}
+			config = built.config;
+		} else {
+			config = { ...(monitor.config as Record<string, unknown>) };
+
+			if (monitor.type === 'tcp') {
+				config.host = editTarget.trim();
+				config.port = Number(editPort);
+			}
+			if (monitor.type === 'ping') config.host = editTarget.trim();
+			if (monitor.type === 'dns') {
+				config.name = editTarget.trim();
+				config.record_type = editRecordType;
+			}
 		}
 
 		saving = true;
@@ -323,6 +339,9 @@
 							<option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>NS</option>
 						</select>
 					</label>
+				{/if}
+				{#if monitor.type === 'http'}
+					<HttpOptions bind:form={editHttp} />
 				{/if}
 				<label class="field">间隔<input class="input" bind:value={editInterval} placeholder="60s / 1m / 1h" /></label>
 				<label class="field">超时<input class="input" bind:value={editTimeout} placeholder="500ms / 10s" /></label>

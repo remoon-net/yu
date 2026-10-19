@@ -19,6 +19,7 @@ type httpConfig struct {
 	FollowRedirects *bool             `json:"follow_redirects"`
 	MaxRedirects    int               `json:"max_redirects"`
 	Headers         map[string]string `json:"headers"`
+	Body            string            `json:"body"`
 	ExpectedStatus  []int             `json:"expected_status"`
 	BodyContains    string            `json:"body_contains"`
 	BodyNotContains string            `json:"body_not_contains"`
@@ -46,7 +47,10 @@ func parseHTTPConfig(raw json.RawMessage) (httpConfig, error) {
 	if cfg.Method == "" {
 		cfg.Method = http.MethodGet
 	}
-	cfg.Method = strings.ToUpper(cfg.Method)
+	cfg.Method = strings.ToUpper(strings.TrimSpace(cfg.Method))
+	if strings.ContainsAny(cfg.Method, " \t\r\n") {
+		return cfg, errors.New("method 不合法")
+	}
 
 	switch len(cfg.ExpectedStatus) {
 	case 0:
@@ -55,12 +59,64 @@ func parseHTTPConfig(raw json.RawMessage) (httpConfig, error) {
 	default:
 		return cfg, errors.New("expected_status 需要 1 个或 2 个数字")
 	}
+	for _, status := range cfg.ExpectedStatus {
+		if status < 100 || status > 599 {
+			return cfg, errors.New("expected_status 需要在 100-599 之间")
+		}
+	}
+	if len(cfg.ExpectedStatus) == 2 && cfg.ExpectedStatus[0] > cfg.ExpectedStatus[1] {
+		return cfg, errors.New("expected_status 起始值不能大于结束值")
+	}
+
+	if len(cfg.Headers) > 50 {
+		return cfg, errors.New("自定义 Header 不能超过 50 个")
+	}
+	headers := make(map[string]string, len(cfg.Headers))
+	for key, value := range cfg.Headers {
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" {
+			return cfg, errors.New("Header 名称不能为空")
+		}
+		if !validHeaderName(key) {
+			return cfg, errors.New("Header 名称不合法")
+		}
+		if len(key) > 100 || len(value) > 4096 {
+			return cfg, errors.New("Header 名称或内容过长")
+		}
+		if strings.ContainsAny(key, "\r\n") || strings.ContainsAny(value, "\r\n") {
+			return cfg, errors.New("Header 不能包含换行")
+		}
+		headers[key] = value
+	}
+	cfg.Headers = headers
+
+	if len(cfg.Body) > 64<<10 {
+		return cfg, errors.New("请求体不能超过 64KB")
+	}
+
+	if cfg.MaxLatencyMS < 0 {
+		return cfg, errors.New("max_latency_ms 不能为负数")
+	}
 
 	if cfg.MaxRedirects <= 0 {
 		cfg.MaxRedirects = 5
 	}
 
 	return cfg, nil
+}
+
+// validHeaderName 校验 RFC 7230 的 token 形式 Header 名称。
+func validHeaderName(name string) bool {
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case strings.ContainsRune("!#$%&'*+-.^_`|~", r):
+		default:
+			return false
+		}
+	}
+	return name != ""
 }
 
 func runHTTP(ctx context.Context, raw json.RawMessage, timeout time.Duration) Result {
@@ -96,13 +152,27 @@ func runHTTP(ctx context.Context, raw json.RawMessage, timeout time.Duration) Re
 		return nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, nil)
+	var reqBody io.Reader
+	if cfg.Body != "" {
+		reqBody = strings.NewReader(cfg.Body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, cfg.Method, cfg.URL, reqBody)
 	if err != nil {
 		return Result{Status: "down", Error: err.Error()}
 	}
 
 	for key, value := range cfg.Headers {
+		if strings.EqualFold(key, "Host") {
+			req.Host = value
+			continue
+		}
 		req.Header.Set(key, value)
+	}
+
+	// 未显式指定 Content-Type 时，为 JSON 请求体补上默认值。
+	if cfg.Body != "" && req.Header.Get("Content-Type") == "" && json.Valid([]byte(cfg.Body)) {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	start := time.Now()

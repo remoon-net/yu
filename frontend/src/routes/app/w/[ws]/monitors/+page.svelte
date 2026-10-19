@@ -3,9 +3,11 @@
 	import { ApiError } from '#lib/api/client.js';
 	import { monitorApi } from '#lib/api/monitors.js';
 	import type { Monitor } from '#lib/api/types.js';
+	import HttpOptions from '#lib/components/HttpOptions.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { parseInterval, parseTimeout, formatInterval } from '#lib/utils/duration.js';
+	import { buildHttpConfig, emptyHttpForm } from '#lib/utils/httpConfig.js';
 	import { parseTags } from '#lib/utils/tags.js';
 
 	const slug = $derived(page.params.ws ?? '');
@@ -28,17 +30,18 @@
 	let alertAfter = $state(2);
 	let groupName = $state('');
 	let tags = $state('');
+	let httpForm = $state(emptyHttpForm());
 
-	function buildConfig() {
+	function buildConfig(): { config: Record<string, unknown>; error: string } {
 		switch (type) {
 			case 'http':
-				return { url: target };
+				return buildHttpConfig(target, httpForm);
 			case 'tcp':
-				return { host: target, port: Number(port) };
+				return { config: { host: target, port: Number(port) }, error: '' };
 			case 'ping':
-				return { host: target };
+				return { config: { host: target }, error: '' };
 			default:
-				return { name: target, record_type: recordType };
+				return { config: { name: target, record_type: recordType }, error: '' };
 		}
 	}
 
@@ -71,6 +74,12 @@
 			return;
 		}
 
+		const { config, error: configError } = buildConfig();
+		if (configError) {
+			formError = configError;
+			return;
+		}
+
 		saving = true;
 		formError = '';
 
@@ -78,7 +87,7 @@
 			await monitorApi.create(workspace.id, {
 				name,
 				type,
-				config: buildConfig(),
+				config,
 				interval_sec: intervalSec,
 				timeout_ms: timeoutMs,
 				alert_after: Number(alertAfter),
@@ -88,6 +97,7 @@
 			name = '';
 			target = '';
 			tags = '';
+			httpForm = emptyHttpForm();
 			showForm = false;
 			await load(workspace.id);
 		} catch (err) {
@@ -143,6 +153,9 @@
 						<option>A</option><option>AAAA</option><option>CNAME</option><option>MX</option><option>TXT</option><option>NS</option>
 					</select>
 				</label>
+			{/if}
+			{#if type === 'http'}
+				<HttpOptions bind:form={httpForm} />
 			{/if}
 			<label class="field">分组<input class="input" bind:value={groupName} placeholder="例如：核心服务" /></label>
 			<label class="field">标签<input class="input" bind:value={tags} placeholder="逗号分隔，例如：prod, api" /></label>

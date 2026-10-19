@@ -33,7 +33,7 @@ Tianji.dev 的精简版：只保留**网站统计**（含短链追踪）与**服
 
 | 编号 | 功能 |
 |---|---|
-| B1 | HTTP(S) 探测：状态码、响应时间、重定向、自定义 Header |
+| B1 | HTTP(S) 探测：状态码、响应时间、重定向、自定义 Header、请求方法与请求体 |
 | B2 | TCP 端口探测：连通性 + 握手耗时 |
 | B3 | Ping / ICMP 探测 |
 | B4 | DNS 探测：指定记录类型 + 期望值校验 |
@@ -371,7 +371,7 @@ status_page_items (
 ```jsonc
 // http
 { "url": "https://x", "method": "GET", "follow_redirects": true, "max_redirects": 5,
-  "headers": {"Key":"Value"}, "expected_status": [200,299],
+  "headers": {"Key":"Value"}, "body": "{\"ping\":true}", "expected_status": [200,299],
   "body_contains": "...", "body_not_contains": "...",
   "json_path": "$.status", "json_equals": "ok",
   "max_latency_ms": 2000 }
