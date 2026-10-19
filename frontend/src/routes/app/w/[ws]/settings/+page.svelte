@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, api } from '#lib/api/client.js';
 	import type { APIKey, CreateInviteResponse, Invite, Member, Role } from '#lib/api/types.js';
+	import Icon from '#lib/components/Icon.svelte';
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { roleLabel } from '#lib/utils/roles.js';
@@ -315,7 +316,10 @@
 			<div class="card-head"><h2>待接受的邀请</h2></div>
 
 			{#if invites.length === 0}
-				<p class="empty">暂无待接受的邀请</p>
+				<div class="empty">
+					<span class="empty-icon"><Icon name="user" size={20} /></span>
+					<p>暂无待接受的邀请</p>
+				</div>
 			{:else}
 				<table class="table">
 					<thead>
@@ -348,7 +352,10 @@
 			<div class="card-head"><h2>API Key</h2></div>
 
 			{#if apiKeys.length === 0}
-				<p class="empty">还没有 API Key</p>
+				<div class="empty">
+					<span class="empty-icon"><Icon name="link" size={20} /></span>
+					<p>还没有 API Key</p>
+				</div>
 			{:else}
 				<table class="table">
 					<thead><tr><th>名称</th><th>前缀</th><th>最近使用</th><th class="num"></th></tr></thead>
@@ -383,15 +390,51 @@
 		</div>
 
 		{#if isOwner && workspace}
-			<div class="card" style="border-color: color-mix(in srgb, var(--danger) 40%, var(--border))">
+			<div class="card danger-zone">
 				<div class="card-head"><h2>危险操作</h2></div>
-				<p class="small muted">
-					删除工作区会一并删除其站点、事件、监控、状态页、告警渠道与成员，且无法恢复。
-				</p>
-				<button class="btn btn-danger" type="button" onclick={deleteWorkspace} disabled={deletingWorkspace}>
-					{deletingWorkspace ? '删除中…' : '删除工作区'}
-				</button>
+				<div class="danger-row">
+					<div class="danger-copy">
+						<p class="danger-title">删除「{workspace.name}」及其全部数据</p>
+						<p class="small muted">
+							删除工作区会一并删除其站点、事件、监控、状态页、告警渠道与成员，且无法恢复。
+						</p>
+					</div>
+					<button
+						class="btn btn-danger"
+						type="button"
+						onclick={deleteWorkspace}
+						disabled={deletingWorkspace}
+					>
+						{deletingWorkspace ? '删除中…' : '删除工作区'}
+					</button>
+				</div>
 			</div>
 		{/if}
 	{/if}
 </div>
+
+<style>
+	.danger-zone {
+		border-color: color-mix(in srgb, var(--danger) 26%, var(--border));
+	}
+
+	.danger-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 16px;
+		padding: 12px 14px;
+		border-radius: 10px;
+		background: var(--danger-soft);
+	}
+
+	.danger-copy {
+		min-width: 0;
+	}
+
+	.danger-title {
+		margin-bottom: 2px;
+		font-weight: 550;
+	}
+</style>

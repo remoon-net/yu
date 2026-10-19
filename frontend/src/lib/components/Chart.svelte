@@ -33,12 +33,26 @@
 		return () => observer.disconnect();
 	});
 
+	const palette = $derived(
+		theme === 'light'
+			? ['#2563eb', '#7c3aed', '#0d9488', '#b7791f']
+			: ['#5b95ff', '#a78bfa', '#38e1c6', '#f5b544']
+	);
+
 	$effect(() => {
 		if (!el) return;
 
 		const currentTheme = theme;
 		chart = echarts.init(el, currentTheme === 'light' ? undefined : 'dark');
-		chart.setOption({ backgroundColor: 'transparent', ...untrack(() => option) }, true);
+		chart.setOption(
+			{
+				backgroundColor: 'transparent',
+				color: palette,
+				textStyle: { fontFamily: "'Noto Sans CJK SC', 'Noto Sans SC', system-ui, sans-serif" },
+				...untrack(() => option)
+			},
+			true
+		);
 
 		const observer = new ResizeObserver(() => chart?.resize());
 		observer.observe(el);
@@ -51,7 +65,7 @@
 	});
 
 	$effect(() => {
-		chart?.setOption({ backgroundColor: 'transparent', ...option }, true);
+		chart?.setOption({ backgroundColor: 'transparent', color: palette, ...option }, true);
 	});
 </script>
 

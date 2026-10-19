@@ -16,15 +16,62 @@
 {#if items.length === 0}
 	<p class="empty">{emptyText}</p>
 {:else}
-	<ul class="bar-list">
+	<ul class="rank-list">
 		{#each items as item (item.value)}
-			<li>
-				<span class="bar-label" title={item.value}>{item.value}</span>
-				<span class="bar-track">
-					<span class="bar-fill" style="width: {(item.count / max) * 100}%"></span>
-				</span>
-				<span class="bar-value">{formatNumber(item.count)}</span>
+			<li class="rank-item">
+				<span class="rank-bar" style={`width:${(item.count / max) * 100}%`}></span>
+				<span class="rank-label" title={item.value}>{item.value}</span>
+				<span class="rank-count">{formatNumber(item.count)}</span>
 			</li>
 		{/each}
 	</ul>
 {/if}
+
+<style>
+	.rank-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.rank-item {
+		position: relative;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 12px;
+		padding: 7px 8px;
+		border-radius: 6px;
+	}
+
+	.rank-bar {
+		position: absolute;
+		inset: 2px auto 2px 0;
+		z-index: 0;
+		border-radius: 4px;
+		background: var(--accent-soft);
+	}
+
+	.rank-label,
+	.rank-count {
+		position: relative;
+		z-index: 1;
+		min-width: 0;
+	}
+
+	.rank-label {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 13px;
+	}
+
+	.rank-count {
+		font-size: 12px;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+</style>
