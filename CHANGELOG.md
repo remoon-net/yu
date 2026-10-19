@@ -2,6 +2,12 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v0.0.2] - 2026-10-19
+
+### 新增
+
+- 新增 `YU_LOG_LEVEL` 环境变量，可配置日志等级（`debug` / `info` / `warn` / `error`），默认 `info`；`docker-compose.yml` 已同步该变量
+
 ## [v0.0.1] - 2026-10-19
 
 首个发布版本。
