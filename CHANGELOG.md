@@ -2,6 +2,16 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v0.0.3] - 2026-10-19
+
+### 新增
+
+- 新增监控状态徽章 `GET /monitor/{workspaceID}/{monitorID}/badge.svg`，可嵌入 README 或站点；支持 `?showDetail=1` 显示最近延迟。监控详情页新增「徽章」入口，可预览并复制图片地址与 Markdown 片段
+
+### 变更
+
+- README 的 Caddy 示例补充 `/monitor/*` 反代说明
+
 ## [v0.0.2] - 2026-10-19
 
 ### 新增
