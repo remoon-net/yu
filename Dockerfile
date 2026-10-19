@@ -14,7 +14,9 @@ LABEL org.opencontainers.image.title="Yu" \
 
 RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S -g 10001 yu \
-    && adduser -S -D -H -u 10001 -G yu yu
+    && adduser -S -D -H -u 10001 -G yu yu \
+    && mkdir -p /data \
+    && chown yu:yu /data
 
 WORKDIR /app
 

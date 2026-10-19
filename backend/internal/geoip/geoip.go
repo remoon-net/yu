@@ -3,6 +3,7 @@ package geoip
 import (
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/oschwald/maxminddb-golang"
 )
@@ -14,8 +15,9 @@ type Location struct {
 	City    string
 }
 
-// Lookup 封装 MaxMind GeoLite2 数据库。
+// Lookup 封装 MaxMind 兼容的 MMDB 数据库，支持更新后热切换。
 type Lookup struct {
+	mu     sync.RWMutex
 	reader *maxminddb.Reader
 }
 
@@ -31,31 +33,61 @@ type record struct {
 	} `maxminddb:"city"`
 }
 
-// Open 打开 GeoLite2 数据库文件。path 为空时返回 nil，表示未启用。
-func Open(path string) (*Lookup, error) {
-	path = strings.TrimSpace(path)
-	if path == "" {
-		return nil, nil
+// New 创建查询器并尝试加载 path；加载失败时返回空的查询器，仍可由更新器稍后填充。
+func New(path string) (*Lookup, error) {
+	lookup := &Lookup{}
+	if strings.TrimSpace(path) == "" {
+		return lookup, nil
 	}
+	if err := lookup.Load(path); err != nil {
+		return lookup, err
+	}
+	return lookup, nil
+}
 
+// Open 打开 MMDB 数据库文件。path 为空时返回未启用的查询器。
+func Open(path string) (*Lookup, error) {
+	return New(path)
+}
+
+// Load 打开新数据库并替换当前 reader；成功后旧 reader 会被关闭。
+func (l *Lookup) Load(path string) error {
 	reader, err := maxminddb.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &Lookup{reader: reader}, nil
+
+	l.mu.Lock()
+	old := l.reader
+	l.reader = reader
+	l.mu.Unlock()
+
+	if old != nil {
+		_ = old.Close()
+	}
+	return nil
 }
 
 // Close 关闭数据库。
 func (l *Lookup) Close() error {
-	if l == nil || l.reader == nil {
+	if l == nil {
 		return nil
 	}
-	return l.reader.Close()
+
+	l.mu.Lock()
+	reader := l.reader
+	l.reader = nil
+	l.mu.Unlock()
+
+	if reader != nil {
+		return reader.Close()
+	}
+	return nil
 }
 
 // Location 查询 IP 对应的大洲/国家/地区/城市；未启用或查询失败时返回空值。
 func (l *Lookup) Location(ip string) Location {
-	if l == nil || l.reader == nil {
+	if l == nil {
 		return Location{}
 	}
 
@@ -64,8 +96,15 @@ func (l *Lookup) Location(ip string) Location {
 		return Location{}
 	}
 
+	l.mu.RLock()
+	reader := l.reader
+	l.mu.RUnlock()
+	if reader == nil {
+		return Location{}
+	}
+
 	var rec record
-	if err := l.reader.Lookup(addr, &rec); err != nil {
+	if err := reader.Lookup(addr, &rec); err != nil {
 		return Location{}
 	}
 

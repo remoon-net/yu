@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- GeoIP 数据库改为自动下载与热更新：默认使用公开的 DB-IP Country Lite，支持自定义下载地址（含 MaxMind GeoLite2），并持久化到 Docker volume
+
 ### 变更
 
 - 完整移除机器人/内网流量过滤功能：删除 `YU_FILTER_BOTS`、`YU_EXCLUDE_CIDRS` 环境变量、站点设置选项与采集/命中记录的过滤逻辑，所有流量均写入统计

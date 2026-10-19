@@ -10,36 +10,40 @@ import (
 
 // Config 保存服务运行所需的全部配置，来自环境变量。
 type Config struct {
-	Addr               string
-	DatabaseURL        string
-	PublicBaseURL      string
-	AllowedOrigins     []string
-	SecureCookies      bool
-	SessionTTL         time.Duration
-	LogLevel           slog.Level
-	StaticDir          string
-	BootstrapEmail     string
-	BootstrapPassword  string
-	BootstrapWorkspace string
-	ProbeConcurrency   int
-	GeoLiteDBPath      string
+	Addr                string
+	DatabaseURL         string
+	PublicBaseURL       string
+	AllowedOrigins      []string
+	SecureCookies       bool
+	SessionTTL          time.Duration
+	LogLevel            slog.Level
+	StaticDir           string
+	BootstrapEmail      string
+	BootstrapPassword   string
+	BootstrapWorkspace  string
+	ProbeConcurrency    int
+	GeoIPDBPath         string
+	GeoIPURL            string
+	GeoIPUpdateInterval time.Duration
 }
 
 // Load 从环境变量读取配置并填充默认值。
 func Load() Config {
 	cfg := Config{
-		Addr:               env("YU_ADDR", ":8080"),
-		DatabaseURL:        env("YU_DATABASE_URL", "postgres://yu:yu@127.0.0.1:5432/yu?sslmode=disable"),
-		PublicBaseURL:      strings.TrimRight(env("YU_PUBLIC_BASE_URL", "http://localhost:8080"), "/"),
-		SecureCookies:      envBool("YU_SECURE_COOKIES", false),
-		SessionTTL:         envDuration("YU_SESSION_TTL", 720*time.Hour),
-		LogLevel:           envLogLevel("YU_LOG_LEVEL", slog.LevelInfo),
-		StaticDir:          env("YU_STATIC_DIR", ""),
-		BootstrapEmail:     env("YU_BOOTSTRAP_EMAIL", ""),
-		BootstrapPassword:  env("YU_BOOTSTRAP_PASSWORD", ""),
-		BootstrapWorkspace: env("YU_BOOTSTRAP_WORKSPACE", "默认工作区"),
-		ProbeConcurrency:   envInt("YU_PROBE_CONCURRENCY", 32),
-		GeoLiteDBPath:      env("YU_GEOIP_DB", ""),
+		Addr:                env("YU_ADDR", ":8080"),
+		DatabaseURL:         env("YU_DATABASE_URL", "postgres://yu:yu@127.0.0.1:5432/yu?sslmode=disable"),
+		PublicBaseURL:       strings.TrimRight(env("YU_PUBLIC_BASE_URL", "http://localhost:8080"), "/"),
+		SecureCookies:       envBool("YU_SECURE_COOKIES", false),
+		SessionTTL:          envDuration("YU_SESSION_TTL", 720*time.Hour),
+		LogLevel:            envLogLevel("YU_LOG_LEVEL", slog.LevelInfo),
+		StaticDir:           env("YU_STATIC_DIR", ""),
+		BootstrapEmail:      env("YU_BOOTSTRAP_EMAIL", ""),
+		BootstrapPassword:   env("YU_BOOTSTRAP_PASSWORD", ""),
+		BootstrapWorkspace:  env("YU_BOOTSTRAP_WORKSPACE", "默认工作区"),
+		ProbeConcurrency:    envInt("YU_PROBE_CONCURRENCY", 32),
+		GeoIPDBPath:         env("YU_GEOIP_DB", ""),
+		GeoIPURL:            env("YU_GEOIP_URL", ""),
+		GeoIPUpdateInterval: time.Duration(envInt("YU_GEOIP_UPDATE_HOURS", 168)) * time.Hour,
 	}
 
 	for _, origin := range strings.Split(env("YU_ALLOWED_ORIGINS", ""), ",") {

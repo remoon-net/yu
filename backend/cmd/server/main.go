@@ -64,11 +64,11 @@ func main() {
 
 	mail := mailer.New()
 
-	geo, err := geoip.Open(cfg.GeoLiteDBPath)
+	geo, err := geoip.New(cfg.GeoIPDBPath)
 	if err != nil {
-		slog.Error("加载 GeoIP 数据库失败", "err", err, "path", cfg.GeoLiteDBPath)
-		os.Exit(1)
+		slog.Warn("加载 GeoIP 数据库失败，后台更新器会重试", "err", err, "path", cfg.GeoIPDBPath)
 	}
+	geoip.NewUpdater(geo, cfg.GeoIPDBPath, cfg.GeoIPURL, cfg.GeoIPUpdateInterval).Start(ctx)
 	defer geo.Close()
 
 	srv := &http.Server{

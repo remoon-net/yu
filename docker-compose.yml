@@ -12,7 +12,11 @@ services:
       YU_BOOTSTRAP_EMAIL: ${YU_BOOTSTRAP_EMAIL:-admin@example.com}
       YU_BOOTSTRAP_PASSWORD: ${YU_BOOTSTRAP_PASSWORD:-change-me-please}
       YU_BOOTSTRAP_WORKSPACE: ${YU_BOOTSTRAP_WORKSPACE:-默认工作区}
-      YU_GEOIP_DB: ${YU_GEOIP_DB:-}
+      YU_GEOIP_DB: ${YU_GEOIP_DB-/data/dbip-country-lite.mmdb}
+      YU_GEOIP_URL: ${YU_GEOIP_URL:-}
+      YU_GEOIP_UPDATE_HOURS: ${YU_GEOIP_UPDATE_HOURS:-168}
+    volumes:
+      - geoip:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,3 +41,4 @@ services:
 
 volumes:
   yu-pgdata:
+  geoip:

@@ -71,7 +71,7 @@ Tianji.dev 的精简版：只保留**网站统计**（含短链追踪）与**服
 | 认证 | HttpOnly Session Cookie（DB 存储 session） + CSRF Token |
 | 密码 | argon2id |
 | 邮件 | net/smtp |
-| GeoIP | MaxMind GeoLite2 本地库（可选启用） |
+| GeoIP | DB-IP Country Lite / MaxMind GeoLite2 MMDB，自动下载 + 热更新 |
 | 日志 | slog（JSON 输出） |
 
 ### 前端
@@ -650,7 +650,9 @@ YU_PUBLIC_BASE_URL=https://yu.example.com
 YU_SESSION_TTL=720h
 YU_SECURE_COOKIES=true
 YU_RETENTION_DAYS=0            # 0 = 永久保留
-YU_GEOIP_DB=/data/GeoLite2-City.mmdb  # 可选
+YU_GEOIP_DB=/data/dbip-country-lite.mmdb  # 设置后启用
+YU_GEOIP_URL=                  # 可选：自定义 MMDB 下载地址
+YU_GEOIP_UPDATE_HOURS=168      # 0 = 只在启动时下载一次
 YU_SCHEDULER_ENABLED=true
 YU_PROBE_CONCURRENCY=32
 ```
