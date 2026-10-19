@@ -322,7 +322,12 @@ type hitRecord struct {
 func (s *Server) recordHit(r *http.Request, hit hitRecord) {
 	ip := clientIP(r)
 	client := analytics.ParseUserAgent(r.UserAgent())
-	if s.traffic.shouldSkip(ip, client.Device == "bot") {
+
+	filter := newTrafficFilter(true, nil)
+	if site, err := s.store.GetSiteByID(r.Context(), hit.SiteID); err == nil {
+		filter = newTrafficFilter(site.FilterBots, site.ExcludeCIDRs)
+	}
+	if filter.shouldSkip(ip, client.Device == "bot") {
 		return
 	}
 

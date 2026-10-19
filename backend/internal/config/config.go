@@ -23,8 +23,6 @@ type Config struct {
 	BootstrapWorkspace string
 	ProbeConcurrency   int
 	GeoLiteDBPath      string
-	FilterBots         bool
-	ExcludeCIDRs       []string
 }
 
 // Load 从环境变量读取配置并填充默认值。
@@ -42,18 +40,11 @@ func Load() Config {
 		BootstrapWorkspace: env("YU_BOOTSTRAP_WORKSPACE", "默认工作区"),
 		ProbeConcurrency:   envInt("YU_PROBE_CONCURRENCY", 32),
 		GeoLiteDBPath:      env("YU_GEOIP_DB", ""),
-		FilterBots:         envBool("YU_FILTER_BOTS", true),
 	}
 
 	for _, origin := range strings.Split(env("YU_ALLOWED_ORIGINS", ""), ",") {
 		if origin = strings.TrimSpace(origin); origin != "" {
 			cfg.AllowedOrigins = append(cfg.AllowedOrigins, strings.TrimRight(origin, "/"))
-		}
-	}
-
-	for _, cidr := range strings.Split(env("YU_EXCLUDE_CIDRS", ""), ",") {
-		if cidr = strings.TrimSpace(cidr); cidr != "" {
-			cfg.ExcludeCIDRs = append(cfg.ExcludeCIDRs, cidr)
 		}
 	}
 

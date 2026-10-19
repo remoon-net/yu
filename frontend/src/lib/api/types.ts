@@ -63,6 +63,8 @@ export interface Site {
 	token: string;
 	share_token: string;
 	timezone: string;
+	filter_bots: boolean;
+	exclude_cidrs: string[];
 	created_at: string;
 	script_url: string;
 	endpoint: string;

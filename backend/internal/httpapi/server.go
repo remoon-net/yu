@@ -20,7 +20,6 @@ type Server struct {
 	store          *store.Store
 	mail           *mailer.Mailer
 	geo            *geoip.Lookup
-	traffic        trafficFilter
 	collectLimiter *rateLimiter
 	static         *staticFiles
 }
@@ -32,7 +31,6 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer, geo *geoip.Loo
 		store:          st,
 		mail:           mail,
 		geo:            geo,
-		traffic:        newTrafficFilter(cfg.FilterBots, cfg.ExcludeCIDRs),
 		collectLimiter: newRateLimiter(),
 		static:         newStaticFiles(cfg.StaticDir),
 	}

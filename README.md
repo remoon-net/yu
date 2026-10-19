@@ -206,15 +206,13 @@ docker run -d --name yu \
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |
 | `YU_PROBE_CONCURRENCY` | `32` | 探测并发上限 |
 | `YU_GEOIP_DB` | 空 | MaxMind GeoLite2 City 数据库路径，启用后记录国家/地区/城市 |
-| `YU_FILTER_BOTS` | `true` | 是否过滤 bot 流量（不写入统计） |
-| `YU_EXCLUDE_CIDRS` | 空 | 不统计的 IP/CIDR，逗号分隔，例如内网或办公网 |
 
 ## 地理与流量过滤
 
 - 下载 [GeoLite2-City.mmdb](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data/)，设置 `YU_GEOIP_DB=/path/to/GeoLite2-City.mmdb`；Docker 部署时需把文件挂载进容器
 - 未配置 GeoIP 时，国家/地区/城市字段保持为空，不影响其他统计
-- Bot 默认不写入统计；如需保留，设置 `YU_FILTER_BOTS=false`
-- 如需排除内部流量，设置 `YU_EXCLUDE_CIDRS=10.0.0.0/8,192.168.0.0/16,203.0.113.8`
+- 流量过滤在「站点设置 → 流量过滤」中配置，按站点生效：默认过滤机器人流量与私有/内网地址
+- 排除 IP/CIDR 支持 IPv4/IPv6，每行或逗号分隔；经反向代理部署时请确保传递 `X-Forwarded-For`
 - 地理信息在请求时实时查询，历史事件未保存 IP，无法补算
 
 ## 采集

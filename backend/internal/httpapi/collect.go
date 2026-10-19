@@ -88,7 +88,7 @@ func (s *Server) handleCollect(w http.ResponseWriter, r *http.Request) {
 	client := analytics.ParseUserAgent(r.UserAgent())
 
 	ip := clientIP(r)
-	if s.traffic.shouldSkip(ip, client.Device == "bot") {
+	if newTrafficFilter(site.FilterBots, site.ExcludeCIDRs).shouldSkip(ip, client.Device == "bot") {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

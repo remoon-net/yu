@@ -295,7 +295,7 @@ func (s *Store) MonitorUptime24h(ctx context.Context, monitorIDs []uuid.UUID) (m
 // GetSiteByShareToken 按分享 token 查询站点。
 func (s *Store) GetSiteByShareToken(ctx context.Context, token string) (*Site, error) {
 	return s.scanSite(s.Pool.QueryRow(ctx, `
-		select id, workspace_id, name, domain, token, share_token, timezone, created_at
+		select id, workspace_id, name, domain, token, share_token, timezone, filter_bots, exclude_cidrs, created_at
 		from sites where share_token = $1`, token))
 }
 

@@ -185,6 +185,8 @@ sites (
   share_token text unique,        -- 公开看板 token
   share_password_hash text,       -- 可选
   timezone text default 'UTC',
+  filter_bots boolean default true,        -- 过滤机器人流量
+  exclude_cidrs text[] default '{10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}', -- 排除 IP/CIDR
   created_at timestamptz
 )
 
@@ -530,8 +532,7 @@ HTTP 探测时读取 `TLS.PeerCertificates[0].NotAfter` 写入 `cert_expires_at`
 |---|---|---|
 | GET/POST | `/api/workspaces/:wsId/sites` | 站点列表 / 创建 |
 | GET | `/api/workspaces/:wsId/stats/overview?from=&to=&timezone=` | 工作区概览 + 趋势 + 分站点统计 |
-| GET/PATCH/DELETE | `/api/workspaces/:wsId/sites/:id` | 详情 / 编辑 / 删除 |
-| GET | `/api/workspaces/:wsId/sites/:id/stats/overview?from=&to=` | 概览卡片 + 趋势，支持筛选参数 |
+| GET/PATCH/DELETE | `/api/workspaces/:wsId/sites/:id` | 详情 / 编辑 / 删除 || GET | `/api/workspaces/:wsId/sites/:id/stats/overview?from=&to=` | 概览卡片 + 趋势，支持筛选参数 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/realtime` | 实时（30 分钟） |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/retention?from=&to=&interval=day\|week` | 留存队列，支持筛选参数 |
 | GET | `/api/workspaces/:wsId/sites/:id/stats/pages?from=&to=` | 页面 / 入口 / 退出 |
@@ -652,8 +653,6 @@ YU_SESSION_TTL=720h
 YU_SECURE_COOKIES=true
 YU_RETENTION_DAYS=0            # 0 = 永久保留
 YU_GEOIP_DB=/data/GeoLite2-City.mmdb  # 可选
-YU_FILTER_BOTS=true
-YU_EXCLUDE_CIDRS=10.0.0.0/8,192.168.0.0/16
 YU_SCHEDULER_ENABLED=true
 YU_PROBE_CONCURRENCY=32
 ```
