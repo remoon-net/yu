@@ -190,6 +190,7 @@ docker run -d --name yu \
 | `YU_ALLOWED_ORIGINS` | 空 | 允许跨域的控制台来源，逗号分隔 |
 | `YU_SECURE_COOKIES` | `false` | HTTPS 部署时设为 `true` |
 | `YU_SESSION_TTL` | `720h` | 会话有效期 |
+| `YU_LOG_LEVEL` | `info` | 日志等级：`debug` / `info` / `warn` / `error` |
 | `YU_STATIC_DIR` | 空 | 内置前端静态资源目录，Docker 镜像中为 `/app/public` |
 | `YU_BOOTSTRAP_EMAIL` / `YU_BOOTSTRAP_PASSWORD` | 空 | 首次启动创建管理员 |
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |

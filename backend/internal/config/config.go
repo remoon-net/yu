@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ type Config struct {
 	AllowedOrigins     []string
 	SecureCookies      bool
 	SessionTTL         time.Duration
+	LogLevel           slog.Level
 	StaticDir          string
 	BootstrapEmail     string
 	BootstrapPassword  string
@@ -30,6 +32,7 @@ func Load() Config {
 		PublicBaseURL:      strings.TrimRight(env("YU_PUBLIC_BASE_URL", "http://localhost:8080"), "/"),
 		SecureCookies:      envBool("YU_SECURE_COOKIES", false),
 		SessionTTL:         envDuration("YU_SESSION_TTL", 720*time.Hour),
+		LogLevel:           envLogLevel("YU_LOG_LEVEL", slog.LevelInfo),
 		StaticDir:          env("YU_STATIC_DIR", ""),
 		BootstrapEmail:     env("YU_BOOTSTRAP_EMAIL", ""),
 		BootstrapPassword:  env("YU_BOOTSTRAP_PASSWORD", ""),
@@ -87,4 +90,17 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return v
+}
+
+// envLogLevel 解析 slog 等级，支持 debug/info/warn/error（大小写不敏感）。
+func envLogLevel(key string, fallback slog.Level) slog.Level {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(raw)); err != nil {
+		return fallback
+	}
+	return level
 }

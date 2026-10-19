@@ -21,7 +21,7 @@ import (
 func main() {
 	cfg := config.Load()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
 	slog.SetDefault(logger)
 	slog.Info("Yu 启动", "version", version.Full(), "buildTime", version.BuildTime)
 

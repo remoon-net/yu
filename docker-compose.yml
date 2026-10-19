@@ -8,6 +8,7 @@ services:
       YU_DATABASE_URL: postgres://yu:yu@postgres:5432/yu?sslmode=disable
       YU_PUBLIC_BASE_URL: ${YU_PUBLIC_BASE_URL:-http://localhost:8080}
       YU_SECURE_COOKIES: ${YU_SECURE_COOKIES:-false}
+      YU_LOG_LEVEL: ${YU_LOG_LEVEL:-info}
       YU_BOOTSTRAP_EMAIL: ${YU_BOOTSTRAP_EMAIL:-admin@example.com}
       YU_BOOTSTRAP_PASSWORD: ${YU_BOOTSTRAP_PASSWORD:-change-me-please}
       YU_BOOTSTRAP_WORKSPACE: ${YU_BOOTSTRAP_WORKSPACE:-默认工作区}
