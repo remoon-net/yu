@@ -15,6 +15,7 @@ type Config struct {
 	AllowedOrigins     []string
 	SecureCookies      bool
 	SessionTTL         time.Duration
+	StaticDir          string
 	BootstrapEmail     string
 	BootstrapPassword  string
 	BootstrapWorkspace string
@@ -29,6 +30,7 @@ func Load() Config {
 		PublicBaseURL:      strings.TrimRight(env("YU_PUBLIC_BASE_URL", "http://localhost:8080"), "/"),
 		SecureCookies:      envBool("YU_SECURE_COOKIES", false),
 		SessionTTL:         envDuration("YU_SESSION_TTL", 720*time.Hour),
+		StaticDir:          env("YU_STATIC_DIR", ""),
 		BootstrapEmail:     env("YU_BOOTSTRAP_EMAIL", ""),
 		BootstrapPassword:  env("YU_BOOTSTRAP_PASSWORD", ""),
 		BootstrapWorkspace: env("YU_BOOTSTRAP_WORKSPACE", "默认工作区"),

@@ -55,6 +55,9 @@ frontend/
   src/routes/            页面路由
   static/collect.js      采集脚本
   build/                 adapter-static 产物
+docker-compose.yml       PostgreSQL + Yu 一键启动
+Dockerfile               镜像打包（只复制本机构建产物）
+Makefile                 构建、镜像与检查
 design.md                设计文档
 ```
 
@@ -129,6 +132,54 @@ yu.example.com {
 header @collect Cache-Control "public, max-age=300"
 ```
 
+### Docker 镜像
+
+镜像采用「本机构建、Docker 只打包」的方式：Go 二进制与前端 `build/` 产物先在宿主机生成，再复制进镜像，容器内不再执行 npm / go 构建。
+
+```bash
+# 含前端静态文件（默认）：镜像 shynome/yu:<git describe>，同时打 shynome/yu:latest
+make docker
+
+# 仅后端 API：镜像 shynome/yu:<git describe>-api
+make docker-api
+
+# 指定仓库名 / 构建后推送
+make push IMAGE=registry.example.com/shynome/yu
+```
+
+常用变量：`IMAGE`（镜像仓库名）、`WITH_FRONTEND=0`（等价于 `make docker-api`）、`TAG_LATEST=0`（不额外打 latest）、`GOARCH=arm64`（交叉编译）、`VERSION=...`（覆盖版本号）。
+
+版本号来自 `git describe --tags --always --dirty`，通过 ldflags 注入二进制；`GET /api/health` 可查看：
+
+```json
+{"status":"ok","version":"v1.2.3","commit":"1a2b3c4","buildTime":"2026-10-19T06:00:00Z","static":true}
+```
+
+容器内前端产物位于 `/app/public`（由 `YU_STATIC_DIR` 指定），Go 服务直接托管页面、`/collect.js`、`/s/*` 与 `/t/*`，不再需要 Caddy。未打包前端时目录为空，服务自动退化为纯 API。
+
+使用 compose 一键启动（PostgreSQL + Yu）：
+
+```bash
+make docker
+docker compose up -d
+```
+
+或使用已有 PostgreSQL：
+
+```bash
+docker run -d --name yu \
+  -p 8080:8080 \
+  -e YU_DATABASE_URL='postgres://yu:yu@172.17.0.1:5432/yu?sslmode=disable' \
+  -e YU_PUBLIC_BASE_URL='https://yu.example.com' \
+  -e YU_SECURE_COOKIES=true \
+  -e YU_BOOTSTRAP_EMAIL='admin@example.com' \
+  -e YU_BOOTSTRAP_PASSWORD='change-me-please' \
+  --cap-add=NET_RAW \
+  shynome/yu:latest
+```
+
+> 容器以非 root 用户运行。Ping 探测需要 ICMP 权限，可用 `--cap-add=NET_RAW`，或在宿主机设置 `net.ipv4.ping_group_range`；不需要 Ping 时可省略。
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
@@ -139,6 +190,7 @@ header @collect Cache-Control "public, max-age=300"
 | `YU_ALLOWED_ORIGINS` | 空 | 允许跨域的控制台来源，逗号分隔 |
 | `YU_SECURE_COOKIES` | `false` | HTTPS 部署时设为 `true` |
 | `YU_SESSION_TTL` | `720h` | 会话有效期 |
+| `YU_STATIC_DIR` | 空 | 内置前端静态资源目录，Docker 镜像中为 `/app/public` |
 | `YU_BOOTSTRAP_EMAIL` / `YU_BOOTSTRAP_PASSWORD` | 空 | 首次启动创建管理员 |
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |
 | `YU_PROBE_CONCURRENCY` | `32` | 探测并发上限 |
@@ -230,6 +282,10 @@ delete from short_links where slug like 'demo-%';
 ## 测试与检查
 
 ```bash
+# 一次跑完（gofmt / go build / go test / 前端检查）
+make check
+
+# 或分开执行
 # 后端
 go build ./...
 go test ./...

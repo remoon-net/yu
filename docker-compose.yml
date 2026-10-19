@@ -1,0 +1,37 @@
+services:
+  yu:
+    image: ${YU_IMAGE:-shynome/yu:latest}
+    restart: unless-stopped
+    ports:
+      - "${YU_PORT:-8080}:8080"
+    environment:
+      YU_DATABASE_URL: postgres://yu:yu@postgres:5432/yu?sslmode=disable
+      YU_PUBLIC_BASE_URL: ${YU_PUBLIC_BASE_URL:-http://localhost:8080}
+      YU_SECURE_COOKIES: ${YU_SECURE_COOKIES:-false}
+      YU_BOOTSTRAP_EMAIL: ${YU_BOOTSTRAP_EMAIL:-admin@example.com}
+      YU_BOOTSTRAP_PASSWORD: ${YU_BOOTSTRAP_PASSWORD:-change-me-please}
+      YU_BOOTSTRAP_WORKSPACE: ${YU_BOOTSTRAP_WORKSPACE:-默认工作区}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Ping 探测需要 ICMP 权限；不启用 Ping 监控时可删除
+    cap_add:
+      - NET_RAW
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: yu
+      POSTGRES_PASSWORD: yu
+      POSTGRES_DB: yu
+    volumes:
+      - yu-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yu -d yu"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  yu-pgdata:

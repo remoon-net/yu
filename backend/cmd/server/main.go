@@ -15,6 +15,7 @@ import (
 	"remoon.net/yu/backend/internal/mailer"
 	"remoon.net/yu/backend/internal/monitor"
 	"remoon.net/yu/backend/internal/store"
+	"remoon.net/yu/backend/internal/version"
 )
 
 func main() {
@@ -22,6 +23,7 @@ func main() {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
+	slog.Info("Yu 启动", "version", version.Full(), "buildTime", version.BuildTime)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -72,7 +74,7 @@ func main() {
 	go scheduler.Run(ctx)
 
 	go func() {
-		slog.Info("HTTP 服务已启动", "addr", cfg.Addr)
+		slog.Info("HTTP 服务已启动", "addr", cfg.Addr, "version", version.Full())
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("HTTP 服务异常退出", "err", err)
 			stop()

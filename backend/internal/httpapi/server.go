@@ -10,6 +10,7 @@ import (
 	"remoon.net/yu/backend/internal/config"
 	"remoon.net/yu/backend/internal/mailer"
 	"remoon.net/yu/backend/internal/store"
+	"remoon.net/yu/backend/internal/version"
 )
 
 // Server 持有 HTTP 处理所需的依赖。
@@ -18,11 +19,18 @@ type Server struct {
 	store          *store.Store
 	mail           *mailer.Mailer
 	collectLimiter *rateLimiter
+	static         *staticFiles
 }
 
 // New 构建路由。
 func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
-	s := &Server{cfg: cfg, store: st, mail: mail, collectLimiter: newRateLimiter()}
+	s := &Server{
+		cfg:            cfg,
+		store:          st,
+		mail:           mail,
+		collectLimiter: newRateLimiter(),
+		static:         newStaticFiles(cfg.StaticDir),
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -34,10 +42,16 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 	r.Use(s.originGuard)
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":    "ok",
+			"version":   version.Version,
+			"commit":    version.Commit,
+			"buildTime": version.BuildTime,
+			"static":    s.static != nil,
+		})
 	})
 
-	// 公开短链跳转（由 Caddy 将 /s/* 反代到本服务）
+	// 公开短链跳转（反代或内置静态托管均可）
 	r.Get("/s/{slug}", s.handleShortLinkRedirect)
 	r.Get("/t/{file}", s.handlePixelImage)
 
@@ -136,9 +150,7 @@ func New(cfg config.Config, st *store.Store, mail *mailer.Mailer) http.Handler {
 		})
 	})
 
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, http.StatusNotFound, "接口不存在")
-	})
+	r.NotFound(s.handleNotFound)
 
 	return r
 }

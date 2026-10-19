@@ -1,0 +1,4 @@
+# docker build 只需要本机构建产物
+*
+!dist
+!dist/**
