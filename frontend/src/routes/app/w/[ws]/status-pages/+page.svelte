@@ -6,10 +6,12 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
+	import { createPending } from '#lib/utils/pending.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
 	const manageable = $derived(canManage(workspace?.role));
+	const pending = createPending();
 
 	let pages = $state<StatusPage[]>([]);
 	let monitors = $state<Monitor[]>([]);
@@ -90,10 +92,17 @@
 			editing = '';
 			return;
 		}
-		const detail = await statusApi.get(workspace.id, pageItem.id);
-		selected = detail.items.map((item) => item.monitor_id);
-		groups = Object.fromEntries(detail.items.map((item) => [item.monitor_id, item.group_name]));
-		editing = pageItem.id;
+
+		await pending.run(`components:${pageItem.id}`, async () => {
+			try {
+				const detail = await statusApi.get(workspace.id, pageItem.id);
+				selected = detail.items.map((item) => item.monitor_id);
+				groups = Object.fromEntries(detail.items.map((item) => [item.monitor_id, item.group_name]));
+				editing = pageItem.id;
+			} catch (err) {
+				error = err instanceof Error ? err.message : '加载组件失败';
+			}
+		});
 	}
 
 	function openEditPage(pageItem: StatusPage) {
@@ -133,20 +142,23 @@
 
 	async function saveItems(pageItem: StatusPage) {
 		if (!workspace) return;
-		try {
-			await statusApi.putItems(
-				workspace.id,
-				pageItem.id,
-				selected.map((monitorId) => ({
-					monitor_id: monitorId,
-					group_name: groups[monitorId] ?? ''
-				}))
-			);
-			notice = '组件已保存';
-			editing = '';
-		} catch (err) {
-			error = err instanceof Error ? err.message : '保存失败';
-		}
+
+		await pending.run(`items:${pageItem.id}`, async () => {
+			try {
+				await statusApi.putItems(
+					workspace.id,
+					pageItem.id,
+					selected.map((monitorId) => ({
+						monitor_id: monitorId,
+						group_name: groups[monitorId] ?? ''
+					}))
+				);
+				notice = '组件已保存';
+				editing = '';
+			} catch (err) {
+				error = err instanceof Error ? err.message : '保存失败';
+			}
+		});
 	}
 
 	async function remove(pageItem: StatusPage) {
@@ -167,8 +179,14 @@
 			return;
 		}
 
-		await statusApi.remove(workspace.id, pageItem.id);
-		await load(workspace.id);
+		await pending.run(`delete:${pageItem.id}`, async () => {
+			try {
+				await statusApi.remove(workspace.id, pageItem.id);
+				await load(workspace.id);
+			} catch (err) {
+				error = err instanceof Error ? err.message : '删除失败';
+			}
+		});
 	}
 
 	function origin() {
@@ -222,7 +240,18 @@
 			<div class="row">
 				{#if manageable}
 					<button class="btn btn-sm" type="button" onclick={() => openEditPage(pageItem)}>编辑</button>
-					<button class="btn btn-sm" type="button" onclick={() => edit(pageItem)}>{editing === pageItem.id ? '收起组件' : '监控组件'}</button>
+					<button
+						class="btn btn-sm"
+						type="button"
+						disabled={pending.has(`components:${pageItem.id}`)}
+						onclick={() => edit(pageItem)}
+					>
+						{pending.has(`components:${pageItem.id}`)
+							? '加载中…'
+							: editing === pageItem.id
+								? '收起组件'
+								: '监控组件'}
+					</button>
 				{/if}
 			</div>
 		</div>
@@ -251,7 +280,7 @@
 						/>
 					</div>
 				{/each}
-				<div class="row"><button class="btn btn-primary btn-sm" type="button" onclick={() => saveItems(pageItem)}>保存组件</button></div>
+				<div class="row"><button class="btn btn-primary btn-sm" type="button" disabled={pending.has(`items:${pageItem.id}`)} onclick={() => saveItems(pageItem)}>{pending.has(`items:${pageItem.id}`) ? '保存中…' : '保存组件'}</button></div>
 			</div>
 		{/if}
 	</div>
@@ -298,9 +327,10 @@
 					class="btn btn-danger"
 					type="button"
 					style="margin-right: auto"
+					disabled={editTarget ? pending.has(`delete:${editTarget.id}`) : false}
 					onclick={() => remove(editTarget!)}
 				>
-					删除
+					{editTarget && pending.has(`delete:${editTarget.id}`) ? '删除中…' : '删除'}
 				</button>
 			{/if}
 			<button class="btn" type="button" onclick={() => (editTarget = null)}>取消</button>

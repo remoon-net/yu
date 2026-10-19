@@ -6,10 +6,12 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
+	import { createPending } from '#lib/utils/pending.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
 	const manageable = $derived(canManage(workspace?.role));
+	const pending = createPending();
 
 	let channels = $state<Channel[]>([]);
 	let incidents = $state<Incident[]>([]);
@@ -188,12 +190,15 @@
 
 	async function testChannel(channel: Channel) {
 		if (!workspace) return;
-		try {
-			const result = await alertApi.testChannel(workspace.id, channel.id);
-			notice = result.ok ? '测试通知已发送' : `发送失败：${result.error}`;
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '测试失败';
-		}
+
+		await pending.run(`test:${channel.id}`, async () => {
+			try {
+				const result = await alertApi.testChannel(workspace.id, channel.id);
+				notice = result.ok ? '测试通知已发送' : `发送失败：${result.error}`;
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '测试失败';
+			}
+		});
 	}
 
 	async function deleteChannel(channel: Channel) {
@@ -214,17 +219,30 @@
 			return;
 		}
 
-		await alertApi.deleteChannel(workspace.id, channel.id);
-		editingChannel = null;
-		resetChannelForm();
-		notice = '渠道已删除';
-		await load(workspace.id);
+		await pending.run(`delete-channel:${channel.id}`, async () => {
+			try {
+				await alertApi.deleteChannel(workspace.id, channel.id);
+				editingChannel = null;
+				resetChannelForm();
+				notice = '渠道已删除';
+				await load(workspace.id);
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '删除渠道失败';
+			}
+		});
 	}
 
 	async function resolveIncident(incident: Incident) {
 		if (!workspace) return;
-		await alertApi.resolveIncident(workspace.id, incident.id);
-		await load(workspace.id);
+
+		await pending.run(`resolve:${incident.id}`, async () => {
+			try {
+				await alertApi.resolveIncident(workspace.id, incident.id);
+				await load(workspace.id);
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '标记恢复失败';
+			}
+		});
 	}
 
 	async function createWindow(event: SubmitEvent) {
@@ -260,8 +278,15 @@
 			confirmText: '删除'
 		});
 		if (!ok) return;
-		await alertApi.deleteMaintenance(workspace.id, item.id);
-		await load(workspace.id);
+
+		await pending.run(`delete-window:${item.id}`, async () => {
+			try {
+				await alertApi.deleteMaintenance(workspace.id, item.id);
+				await load(workspace.id);
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '删除维护窗口失败';
+			}
+		});
 	}
 </script>
 
@@ -298,7 +323,14 @@
 							<td class="num">
 								{#if manageable}
 									<button class="btn btn-sm" type="button" onclick={() => openEditChannel(channel)}>编辑</button>
-									<button class="btn btn-sm" type="button" onclick={() => testChannel(channel)}>测试</button>
+									<button
+										class="btn btn-sm"
+										type="button"
+										disabled={pending.has(`test:${channel.id}`)}
+										onclick={() => testChannel(channel)}
+									>
+										{pending.has(`test:${channel.id}`) ? '测试中…' : '测试'}
+									</button>
 								{/if}
 							</td>
 						</tr>
@@ -357,9 +389,10 @@
 								class="btn btn-danger"
 								type="button"
 								style="margin-right: auto"
+								disabled={pending.has(`delete-channel:${editingChannel.id}`)}
 								onclick={() => deleteChannel(editingChannel!)}
 							>
-								删除
+								{pending.has(`delete-channel:${editingChannel.id}`) ? '删除中…' : '删除'}
 							</button>
 						{/if}
 						<button class="btn" type="button" onclick={() => (showChannel = false)}>取消</button>
@@ -390,7 +423,14 @@
 							<td><span class="badge" class:ok={incident.resolved_at !== null}>{incident.resolved_at ? '已恢复' : '进行中'}</span></td>
 							<td class="num">
 								{#if !incident.resolved_at && manageable}
-									<button class="btn btn-sm" type="button" onclick={() => resolveIncident(incident)}>标记恢复</button>
+									<button
+										class="btn btn-sm"
+										type="button"
+										disabled={pending.has(`resolve:${incident.id}`)}
+										onclick={() => resolveIncident(incident)}
+									>
+										{pending.has(`resolve:${incident.id}`) ? '处理中…' : '标记恢复'}
+									</button>
 								{/if}
 							</td>
 						</tr>
@@ -419,7 +459,7 @@
 							<td class="small muted">{new Date(item.starts_at).toLocaleString('zh-CN')} → {new Date(item.ends_at).toLocaleString('zh-CN')}</td>
 							<td>{item.monitor_ids.length || '全部'}</td>
 							<td class="num">
-								{#if manageable}<button class="btn btn-sm btn-danger" type="button" onclick={() => deleteWindow(item)}>删除</button>{/if}
+								{#if manageable}<button class="btn btn-sm btn-danger" type="button" disabled={pending.has(`delete-window:${item.id}`)} onclick={() => deleteWindow(item)}>{pending.has(`delete-window:${item.id}`) ? '删除中…' : '删除'}</button>{/if}
 							</td>
 						</tr>
 					{/each}

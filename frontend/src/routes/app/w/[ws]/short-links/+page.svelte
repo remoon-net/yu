@@ -9,10 +9,12 @@
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { formatDateTime, formatNumber } from '#lib/utils/format.js';
+	import { createPending } from '#lib/utils/pending.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
 	const manageable = $derived(canManage(workspace?.role));
+	const pending = createPending();
 
 	let sites = $state<Site[]>([]);
 	let siteId = $state('');
@@ -188,10 +190,12 @@
 		}
 
 		try {
-			await shortLinkApi.remove(workspace.id, siteId, link.id);
-			editing = null;
-			notice = '短链已删除';
-			await loadLinks(workspace.id, siteId);
+			await pending.run(`delete:${link.id}`, async () => {
+				await shortLinkApi.remove(workspace.id, siteId, link.id);
+				editing = null;
+				notice = '短链已删除';
+				await loadLinks(workspace.id, siteId);
+			});
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '删除短链失败';
 		}
@@ -207,8 +211,10 @@
 	}
 
 	async function openQr(link: ShortLink) {
-		qrTarget = link;
-		qrSvg = await QRCode.toString(shortURL(link.slug), { type: 'svg', margin: 1, width: 240 });
+		await pending.run(`qr:${link.id}`, async () => {
+			qrTarget = link;
+			qrSvg = await QRCode.toString(shortURL(link.slug), { type: 'svg', margin: 1, width: 240 });
+		});
 	}
 
 	async function downloadQr() {
@@ -241,10 +247,12 @@
 	}
 
 	async function openDetail(link: ShortLink) {
-		detailTarget = link;
-		detail = null;
-		detailError = '';
-		await loadDetail();
+		await pending.run(`detail:${link.id}`, async () => {
+			detailTarget = link;
+			detail = null;
+			detailError = '';
+			await loadDetail();
+		});
 	}
 
 	async function loadDetail() {
@@ -342,14 +350,14 @@
 						</td>
 						<td class="actions-cell">
 							<div class="actions">
-							<button class="btn btn-sm" type="button" onclick={() => openDetail(link)}>详情</button>
+							<button class="btn btn-sm" type="button" disabled={pending.has(`detail:${link.id}`)} onclick={() => openDetail(link)}>{pending.has(`detail:${link.id}`) ? '加载中…' : '详情'}</button>
 							<button class="icon-btn" type="button" title="复制短链" aria-label="复制短链" onclick={() => copy(link)}>
 								<svg viewBox="0 0 24 24" aria-hidden="true">
 									<rect x="9" y="9" width="11" height="11" rx="2" />
 									<path d="M5 15V5a2 2 0 0 1 2-2h10" />
 								</svg>
 							</button>
-							<button class="icon-btn" type="button" title="二维码" aria-label="二维码" onclick={() => openQr(link)}>
+							<button class="icon-btn" type="button" title="二维码" aria-label="二维码" disabled={pending.has(`qr:${link.id}`)} onclick={() => openQr(link)}>
 								<svg viewBox="0 0 24 24" aria-hidden="true">
 									<rect x="3" y="3" width="7" height="7" rx="1" />
 									<rect x="14" y="3" width="7" height="7" rx="1" />
@@ -408,9 +416,10 @@
 					class="btn btn-danger"
 					type="button"
 					style="margin-right: auto"
+					disabled={editing ? pending.has(`delete:${editing.id}`) : false}
 					onclick={() => remove(editing!)}
 				>
-					删除
+					{editing && pending.has(`delete:${editing.id}`) ? '删除中…' : '删除'}
 				</button>
 			{/if}
 			<button class="btn" type="button" onclick={() => (showForm = false)}>取消</button>

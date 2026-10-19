@@ -51,6 +51,7 @@
 	let workspaceSlug = $state('');
 	let createError = $state('');
 	let creating = $state(false);
+	let loggingOut = $state(false);
 
 	async function createWorkspace(event: SubmitEvent) {
 		event.preventDefault();
@@ -110,8 +111,13 @@
 	}
 
 	async function logout() {
-		await session.logout();
-		void goto('/login/', { replace: true });
+		loggingOut = true;
+		try {
+			await session.logout();
+			void goto('/login/', { replace: true });
+		} finally {
+			loggingOut = false;
+		}
 	}
 </script>
 
@@ -200,9 +206,9 @@
 								<span class="tiny dim truncate">{session.user?.email}</span>
 							</div>
 							<div class="divider"></div>
-							<button class="menu-item danger" type="button" onclick={logout}>
+							<button class="menu-item danger" type="button" disabled={loggingOut} onclick={logout}>
 								<Icon name="logout" size={14} />
-								退出登录
+								{loggingOut ? '退出中…' : '退出登录'}
 							</button>
 						</div>
 					</details>

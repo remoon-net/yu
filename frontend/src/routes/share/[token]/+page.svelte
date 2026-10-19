@@ -12,6 +12,7 @@
 	let error = $state('');
 	let needPassword = $state(false);
 	let password = $state('');
+	let unlocking = $state(false);
 
 	$effect(() => {
 		void load();
@@ -32,6 +33,7 @@
 
 	async function unlock(event: SubmitEvent) {
 		event.preventDefault();
+		unlocking = true;
 		try {
 			data = await api.get<ShareResponse>(
 				`/api/public/share/${token}?range=24h&password=${encodeURIComponent(password)}`
@@ -39,6 +41,8 @@
 			needPassword = false;
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '密码错误';
+		} finally {
+			unlocking = false;
 		}
 	}
 
@@ -67,7 +71,9 @@
 				<h1>需要访问密码</h1>
 				{#if error}<div class="error">{error}</div>{/if}
 				<label class="field">密码<input class="input" type="password" bind:value={password} required /></label>
-				<button class="btn btn-primary" type="submit">查看</button>
+				<button class="btn btn-primary" type="submit" disabled={unlocking}>
+					{unlocking ? '验证中…' : '查看'}
+				</button>
 			</form>
 		{:else if error}
 			<div class="error">{error}</div>

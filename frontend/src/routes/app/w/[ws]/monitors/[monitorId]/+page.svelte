@@ -16,12 +16,14 @@
 	import { formatInterval, formatTimeout, parseInterval, parseTimeout } from '#lib/utils/duration.js';
 	import { formatNumber } from '#lib/utils/format.js';
 	import { buildHttpConfig, emptyHttpForm, httpFormFromConfig } from '#lib/utils/httpConfig.js';
+	import { createPending } from '#lib/utils/pending.svelte.js';
 	import { parseTags } from '#lib/utils/tags.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const monitorId = $derived(page.params.monitorId ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
 	const manageable = $derived(canManage(workspace?.role));
+	const pending = createPending();
 
 	let monitor = $state<Monitor | null>(null);
 	const mutedUntil = $derived(
@@ -138,24 +140,32 @@
 
 	async function mute() {
 		if (!workspace || !monitor) return;
-		try {
-			await monitorApi.mute(workspace.id, monitor.id, 60);
-			monitor = { ...monitor, muted_until: new Date(Date.now() + 60 * 60 * 1000).toISOString() };
-			notice = '已静默 60 分钟';
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '静默失败';
-		}
+		const current = monitor;
+
+		await pending.run('mute', async () => {
+			try {
+				await monitorApi.mute(workspace.id, current.id, 60);
+				monitor = { ...current, muted_until: new Date(Date.now() + 60 * 60 * 1000).toISOString() };
+				notice = '已静默 60 分钟';
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '静默失败';
+			}
+		});
 	}
 
 	async function unmute() {
 		if (!workspace || !monitor) return;
-		try {
-			await monitorApi.mute(workspace.id, monitor.id, 0);
-			monitor = { ...monitor, muted_until: null };
-			notice = '已取消静默';
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '取消静默失败';
-		}
+		const current = monitor;
+
+		await pending.run('mute', async () => {
+			try {
+				await monitorApi.mute(workspace.id, current.id, 0);
+				monitor = { ...current, muted_until: null };
+				notice = '已取消静默';
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '取消静默失败';
+			}
+		});
 	}
 
 	function openEdit() {
@@ -273,6 +283,7 @@
 
 	async function remove() {
 		if (!workspace || !monitor) return;
+		const current = monitor;
 
 		// 从编辑弹窗触发时，先关闭编辑弹窗再弹确认，取消可返回。
 		const fromForm = showEdit;
@@ -290,8 +301,10 @@
 		}
 
 		try {
-			await monitorApi.remove(workspace.id, monitor.id);
-			await goto(`/app/w/${slug}/monitors/`);
+			await pending.run('delete', async () => {
+				await monitorApi.remove(workspace.id, current.id);
+				await goto(`/app/w/${slug}/monitors/`);
+			});
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '删除失败';
 		}
@@ -311,9 +324,13 @@
 		{#if manageable}
 			<button class="btn btn-sm" type="button" onclick={openEdit}>编辑</button>
 			{#if isMuted}
-				<button class="btn btn-sm" type="button" onclick={unmute}>取消静默</button>
+				<button class="btn btn-sm" type="button" disabled={pending.has('mute')} onclick={unmute}>
+					{pending.has('mute') ? '处理中…' : '取消静默'}
+				</button>
 			{:else}
-				<button class="btn btn-sm" type="button" onclick={mute}>静默 60 分钟</button>
+				<button class="btn btn-sm" type="button" disabled={pending.has('mute')} onclick={mute}>
+					{pending.has('mute') ? '处理中…' : '静默 60 分钟'}
+				</button>
 			{/if}
 		{/if}
 	</div>
@@ -362,8 +379,14 @@
 			</label>
 			{#if editError}<div class="error" style="margin-top: 12px">{editError}</div>{/if}
 			<div class="modal-actions">
-				<button class="btn btn-danger" type="button" style="margin-right: auto" onclick={remove}>
-					删除
+				<button
+					class="btn btn-danger"
+					type="button"
+					style="margin-right: auto"
+					disabled={pending.has('delete')}
+					onclick={remove}
+				>
+					{pending.has('delete') ? '删除中…' : '删除'}
 				</button>
 				<button class="btn" type="button" onclick={() => (showEdit = false)}>取消</button>
 				<button class="btn btn-primary" type="submit" disabled={saving}>{saving ? '保存中…' : '保存'}</button>

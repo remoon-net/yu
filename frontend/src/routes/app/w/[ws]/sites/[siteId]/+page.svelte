@@ -15,6 +15,7 @@
 	let error = $state('');
 	let notice = $state('');
 	let saving = $state(false);
+	let deleting = $state(false);
 	let copied = $state('');
 
 	let name = $state('');
@@ -90,11 +91,14 @@
 		});
 		if (!ok) return;
 
+		deleting = true;
 		try {
 			await api.delete(`/api/workspaces/${workspace.id}/sites/${site.id}`);
 			await goto(`/app/w/${slug}/analytics/`);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '删除失败';
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -195,7 +199,9 @@
 				<p class="small muted" style="margin-bottom: 12px">
 					删除站点会同时删除其全部事件与会话数据，且无法恢复。
 				</p>
-				<button class="btn btn-danger" type="button" onclick={remove}>删除站点</button>
+				<button class="btn btn-danger" type="button" disabled={deleting} onclick={remove}>
+					{deleting ? '删除中…' : '删除站点'}
+				</button>
 			</div>
 		{/if}
 	</div>

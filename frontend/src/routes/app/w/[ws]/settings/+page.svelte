@@ -6,12 +6,14 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
+	import { createPending } from '#lib/utils/pending.svelte.js';
 	import { roleLabel } from '#lib/utils/roles.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
 	const manageable = $derived(canManage(workspace?.role));
 	const isOwner = $derived(workspace?.role === 'owner');
+	const pending = createPending();
 
 	let members = $state<Member[]>([]);
 	let invites = $state<Invite[]>([]);
@@ -64,28 +66,38 @@
 		event.preventDefault();
 		if (!workspace) return;
 
-		try {
-			const result = await api.post<{ key: APIKey; token: string }>(
-				`/api/workspaces/${workspace.id}/api-keys`,
-				{ name: keyName }
-			);
-			newToken = result.token;
-			keyName = '';
-			await loadAll(workspace.id);
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '创建 API Key 失败';
-		}
+		await pending.run('key:create', async () => {
+			try {
+				const result = await api.post<{ key: APIKey; token: string }>(
+					`/api/workspaces/${workspace.id}/api-keys`,
+					{ name: keyName }
+				);
+				newToken = result.token;
+				keyName = '';
+				await loadAll(workspace.id);
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '创建 API Key 失败';
+			}
+		});
 	}
 
-	async function deleteKey(key: APIKey) {		if (!workspace) return;
+	async function deleteKey(key: APIKey) {
+		if (!workspace) return;
 		const ok = await confirmDialog({
 			title: '删除 API Key',
 			message: `确定删除 API Key「${key.name}」？使用该 Key 的集成会立即失效。`,
 			confirmText: '删除'
 		});
 		if (!ok) return;
-		await api.delete(`/api/workspaces/${workspace.id}/api-keys/${key.id}`);
-		await loadAll(workspace.id);
+
+		await pending.run(`key:delete:${key.id}`, async () => {
+			try {
+				await api.delete(`/api/workspaces/${workspace.id}/api-keys/${key.id}`);
+				await loadAll(workspace.id);
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '删除 API Key 失败';
+			}
+		});
 	}
 
 	async function invite(event: SubmitEvent) {
@@ -122,13 +134,15 @@
 		error = '';
 		notice = '';
 
-		try {
-			await api.patch(`/api/workspaces/${workspace.id}/members/${member.user_id}`, { role });
-			await loadAll(workspace.id);
-			notice = '成员角色已更新';
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '更新角色失败';
-		}
+		await pending.run(`role:${member.user_id}`, async () => {
+			try {
+				await api.patch(`/api/workspaces/${workspace.id}/members/${member.user_id}`, { role });
+				await loadAll(workspace.id);
+				notice = '成员角色已更新';
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '更新角色失败';
+			}
+		});
 	}
 
 	async function deleteWorkspace() {
@@ -167,13 +181,15 @@
 		error = '';
 		notice = '';
 
-		try {
-			await api.delete(`/api/workspaces/${workspace.id}/members/${member.user_id}`);
-			await loadAll(workspace.id);
-			notice = '成员已移除';
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '移除成员失败';
-		}
+		await pending.run(`member:delete:${member.user_id}`, async () => {
+			try {
+				await api.delete(`/api/workspaces/${workspace.id}/members/${member.user_id}`);
+				await loadAll(workspace.id);
+				notice = '成员已移除';
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '移除成员失败';
+			}
+		});
 	}
 
 	async function deleteInvite(item: Invite) {
@@ -189,13 +205,15 @@
 		error = '';
 		notice = '';
 
-		try {
-			await api.delete(`/api/workspaces/${workspace.id}/invites/${item.id}`);
-			await loadAll(workspace.id);
-			notice = '邀请已撤销';
-		} catch (err) {
-			error = err instanceof ApiError ? err.message : '撤销邀请失败';
-		}
+		await pending.run(`invite:delete:${item.id}`, async () => {
+			try {
+				await api.delete(`/api/workspaces/${workspace.id}/invites/${item.id}`);
+				await loadAll(workspace.id);
+				notice = '邀请已撤销';
+			} catch (err) {
+				error = err instanceof ApiError ? err.message : '撤销邀请失败';
+			}
+		});
 	}
 
 	async function copy() {
@@ -251,6 +269,7 @@
 									class="select"
 									style="max-width: 130px"
 									value={member.role}
+									disabled={pending.has(`role:${member.user_id}`)}
 									onchange={(event) => updateRole(member, event.currentTarget.value)}
 								>
 									{#if isOwner}<option value="owner">所有者</option>{/if}
@@ -266,7 +285,8 @@
 								<button
 									class="btn btn-sm btn-danger"
 									type="button"
-									onclick={() => removeMember(member)}>移除</button
+									disabled={pending.has(`member:delete:${member.user_id}`)}
+									onclick={() => removeMember(member)}>{pending.has(`member:delete:${member.user_id}`) ? '移除中…' : '移除'}</button
 								>
 							{/if}
 						</td>
@@ -348,7 +368,14 @@
 								<td class="muted">{new Date(item.expires_at).toLocaleString('zh-CN')}</td>
 								<td class="num">
 									{#if manageable}
-										<button class="btn btn-sm btn-danger" type="button" onclick={() => deleteInvite(item)}>撤销</button>
+										<button
+											class="btn btn-sm btn-danger"
+											type="button"
+											disabled={pending.has(`invite:delete:${item.id}`)}
+											onclick={() => deleteInvite(item)}
+										>
+											{pending.has(`invite:delete:${item.id}`) ? '撤销中…' : '撤销'}
+										</button>
 									{/if}
 								</td>
 							</tr>
@@ -377,7 +404,7 @@
 								<td>{key.name}</td>
 								<td class="small muted">{key.prefix}…</td>
 								<td class="small muted">{key.last_used_at ? new Date(key.last_used_at).toLocaleString('zh-CN') : '从未使用'}</td>
-								<td class="num"><button class="btn btn-sm btn-danger" type="button" onclick={() => deleteKey(key)}>删除</button></td>
+								<td class="num"><button class="btn btn-sm btn-danger" type="button" disabled={pending.has(`key:delete:${key.id}`)} onclick={() => deleteKey(key)}>{pending.has(`key:delete:${key.id}`) ? '删除中…' : '删除'}</button></td>
 							</tr>
 						{/each}
 					</tbody>
@@ -387,7 +414,9 @@
 			<form onsubmit={createKey} style="margin-top: 16px">
 				<div class="row">
 					<input class="input" style="max-width: 260px" bind:value={keyName} required placeholder="Key 名称，例如 CI" />
-					<button class="btn btn-primary" type="submit">创建</button>
+					<button class="btn btn-primary" type="submit" disabled={pending.has('key:create')}>
+						{pending.has('key:create') ? '创建中…' : '创建'}
+					</button>
 				</div>
 			</form>
 

@@ -8,10 +8,12 @@
 	import { confirmDialog } from '#lib/stores/confirm.svelte.js';
 	import { canManage, session } from '#lib/stores/session.svelte.js';
 	import { formatDateTime, formatNumber } from '#lib/utils/format.js';
+	import { createPending } from '#lib/utils/pending.svelte.js';
 
 	const slug = $derived(page.params.ws ?? '');
 	const workspace = $derived(session.findWorkspace(slug));
 	const manageable = $derived(canManage(workspace?.role));
+	const pending = createPending();
 
 	let sites = $state<Site[]>([]);
 	let siteId = $state('');
@@ -175,10 +177,12 @@
 		}
 
 		try {
-			await pixelApi.remove(workspace.id, siteId, pixel.id);
-			editing = null;
-			notice = '像素已删除';
-			await loadPixels(workspace.id, siteId);
+			await pending.run(`delete:${pixel.id}`, async () => {
+				await pixelApi.remove(workspace.id, siteId, pixel.id);
+				editing = null;
+				notice = '像素已删除';
+				await loadPixels(workspace.id, siteId);
+			});
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : '删除像素失败';
 		}
@@ -194,10 +198,12 @@
 	}
 
 	async function openDetail(pixel: Pixel) {
-		detailTarget = pixel;
-		detail = null;
-		detailError = '';
-		await loadDetail();
+		await pending.run(`detail:${pixel.id}`, async () => {
+			detailTarget = pixel;
+			detail = null;
+			detailError = '';
+			await loadDetail();
+		});
 	}
 
 	async function loadDetail() {
@@ -285,7 +291,7 @@
 						</td>
 						<td class="actions-cell">
 							<div class="actions">
-								<button class="btn btn-sm" type="button" onclick={() => openDetail(pixel)}>详情</button>
+								<button class="btn btn-sm" type="button" disabled={pending.has(`detail:${pixel.id}`)} onclick={() => openDetail(pixel)}>{pending.has(`detail:${pixel.id}`) ? '加载中…' : '详情'}</button>
 								<button
 									class="icon-btn"
 									type="button"
@@ -348,9 +354,10 @@
 					class="btn btn-danger"
 					type="button"
 					style="margin-right: auto"
+					disabled={editing ? pending.has(`delete:${editing.id}`) : false}
 					onclick={() => remove(editing!)}
 				>
-					删除
+					{editing && pending.has(`delete:${editing.id}`) ? '删除中…' : '删除'}
 				</button>
 			{/if}
 			<button class="btn" type="button" onclick={() => (showForm = false)}>取消</button>
