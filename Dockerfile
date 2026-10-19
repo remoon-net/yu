@@ -2,15 +2,10 @@
 
 # 本镜像只做打包，Go 二进制与前端产物均在本机构建后复制进来。
 # 构建请使用 make docker / make docker-api，不要直接 docker build。
-FROM alpine:3.22
+FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
 
 ARG VERSION=dev
 ARG WITH_FRONTEND=true
-
-LABEL org.opencontainers.image.title="Yu" \
-      org.opencontainers.image.description="网站统计 + 服务监控 + 短链/遥测" \
-      org.opencontainers.image.version="${VERSION}" \
-      org.remoon.yu.frontend="${WITH_FRONTEND}"
 
 RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S -g 10001 yu \
@@ -18,6 +13,11 @@ RUN apk add --no-cache ca-certificates tzdata \
     && mkdir -p /data \
     && chown yu:yu /data
 
+LABEL org.opencontainers.image.title="Yu" \
+      org.opencontainers.image.description="网站统计 + 服务监控 + 短链/遥测" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.remoon.yu.frontend="${WITH_FRONTEND}"
+    
 WORKDIR /app
 
 COPY dist/yu-server /app/yu-server
