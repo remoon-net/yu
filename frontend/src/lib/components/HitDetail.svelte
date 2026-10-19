@@ -3,6 +3,7 @@
 	import type { RangeInfo, ShortLinkDetail } from '#lib/api/types.js';
 	import BarList from '#lib/components/BarList.svelte';
 	import Chart from '#lib/components/Chart.svelte';
+	import RangePicker from '#lib/components/RangePicker.svelte';
 	import { formatChartTime, formatDateTime, formatNumber } from '#lib/utils/format.js';
 
 	let {
@@ -94,16 +95,7 @@
 		</div>
 	</div>
 	<div class="row" style="gap: 6px">
-		{#each detailRanges as item (item.value)}
-			<button
-				class="btn btn-sm"
-				class:btn-primary={range === item.value}
-				type="button"
-				onclick={() => onRangeChange(item.value)}
-			>
-				{item.label}
-			</button>
-		{/each}
+		<RangePicker presets={detailRanges} value={range} onchange={onRangeChange} />
 	</div>
 </div>
 

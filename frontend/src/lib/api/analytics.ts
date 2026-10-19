@@ -8,13 +8,14 @@ import type {
 	RealtimeStats,
 	SourcesResponse
 } from '#lib/api/types.js';
+import { rangeQuery } from '#lib/utils/range.js';
 
 function base(workspaceId: string, siteId: string): string {
 	return `/api/workspaces/${workspaceId}/sites/${siteId}/stats`;
 }
 
 function query(range: string): string {
-	return `?range=${encodeURIComponent(range)}`;
+	return rangeQuery(range);
 }
 
 export const analyticsApi = {

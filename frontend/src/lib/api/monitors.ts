@@ -15,6 +15,7 @@ import type {
 	StatusPage,
 	StatusPageItem
 } from '#lib/api/types.js';
+import { rangeQuery } from '#lib/utils/range.js';
 
 function base(workspaceId: string): string {
 	return `/api/workspaces/${workspaceId}`;
@@ -38,11 +39,13 @@ export const monitorApi = {
 	},
 	stats(workspaceId: string, monitorId: string, range: string): Promise<MonitorStatsResponse> {
 		return api.get<MonitorStatsResponse>(
-			`${base(workspaceId)}/monitors/${monitorId}/stats?range=${encodeURIComponent(range)}`
+			`${base(workspaceId)}/monitors/${monitorId}/stats${rangeQuery(range)}`
 		);
 	},
 	checks(workspaceId: string, monitorId: string, range = '24h'): Promise<{ checks: MonitorCheck[] }> {
-		return api.get(`${base(workspaceId)}/monitors/${monitorId}/checks?range=${range}&limit=100`);
+		return api.get(
+			`${base(workspaceId)}/monitors/${monitorId}/checks${rangeQuery(range)}&limit=100`
+		);
 	},
 	mute(workspaceId: string, monitorId: string, minutes: number): Promise<void> {
 		return api.post(`${base(workspaceId)}/monitors/${monitorId}/mute`, { minutes });
@@ -115,7 +118,7 @@ export const shortLinkApi = {
 	},
 	stats(workspaceId: string, siteId: string, linkId: string, range: string): Promise<ShortLinkStatsResponse> {
 		return api.get<ShortLinkStatsResponse>(
-			`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}/stats?range=${encodeURIComponent(range)}`
+			`${base(workspaceId)}/sites/${siteId}/short-links/${linkId}/stats${rangeQuery(range)}`
 		);
 	},
 	remove(workspaceId: string, siteId: string, linkId: string): Promise<void> {
@@ -135,7 +138,7 @@ export const pixelApi = {
 	},
 	stats(workspaceId: string, siteId: string, pixelId: string, range: string): Promise<PixelStatsResponse> {
 		return api.get<PixelStatsResponse>(
-			`${base(workspaceId)}/sites/${siteId}/pixels/${pixelId}/stats?range=${encodeURIComponent(range)}`
+			`${base(workspaceId)}/sites/${siteId}/pixels/${pixelId}/stats${rangeQuery(range)}`
 		);
 	},
 	remove(workspaceId: string, siteId: string, pixelId: string): Promise<void> {
