@@ -2,6 +2,12 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v0.0.4] - 2026-10-19
+
+### 变更
+
+- 前端依赖安装改用 pnpm：`pnpm ci` + `pnpm run build`，新增 `pnpm-lock.yaml` 并移除 `package-lock.json`
+
 ## [v0.0.3] - 2026-10-19
 
 ### 新增
