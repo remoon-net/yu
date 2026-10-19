@@ -52,7 +52,7 @@ all: docker
 
 frontend:
 	@echo "==> 构建前端"
-	cd frontend && { [ -d node_modules ] && [ ! package-lock.json -nt node_modules ] || npm ci; }
+	cd frontend && { [ -x node_modules/.bin/vite ] && [ ! package-lock.json -nt node_modules/.bin/vite ] || npm ci; }
 	cd frontend && npm run build
 
 backend:
