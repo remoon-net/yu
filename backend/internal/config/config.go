@@ -43,7 +43,7 @@ func Load() Config {
 		ProbeConcurrency:    envInt("YU_PROBE_CONCURRENCY", 32),
 		GeoIPDBPath:         env("YU_GEOIP_DB", ""),
 		GeoIPURL:            env("YU_GEOIP_URL", ""),
-		GeoIPUpdateInterval: time.Duration(envInt("YU_GEOIP_UPDATE_HOURS", 168)) * time.Hour,
+		GeoIPUpdateInterval: time.Duration(envInt("YU_GEOIP_UPDATE_HOURS", 720)) * time.Hour,
 	}
 
 	for _, origin := range strings.Split(env("YU_ALLOWED_ORIGINS", ""), ",") {

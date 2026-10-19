@@ -42,11 +42,11 @@ func TestLookupWithoutDatabase(t *testing.T) {
 	}
 }
 
-func TestDBIPCountryURL(t *testing.T) {
-	got := dbipCountryURL(time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC))
-	want := "https://download.db-ip.com/free/dbip-country-lite-2026-10.mmdb.gz"
+func TestDBIPCityURL(t *testing.T) {
+	got := dbipCityURL(time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC))
+	want := "https://download.db-ip.com/free/dbip-city-lite-2026-10.mmdb.gz"
 	if got != want {
-		t.Fatalf("dbipCountryURL() = %q, want %q", got, want)
+		t.Fatalf("dbipCityURL() = %q, want %q", got, want)
 	}
 }
 

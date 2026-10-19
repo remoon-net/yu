@@ -205,14 +205,15 @@ docker run -d --name yu \
 | `YU_BOOTSTRAP_EMAIL` / `YU_BOOTSTRAP_PASSWORD` | 空 | 首次启动创建管理员 |
 | `YU_BOOTSTRAP_WORKSPACE` | `默认工作区` | 初始工作区名称 |
 | `YU_PROBE_CONCURRENCY` | `32` | 探测并发上限 |
-| `YU_GEOIP_DB` | 空（Docker 为 `/data/dbip-country-lite.mmdb`） | MMDB 数据库路径；设置后启用国家/地区/城市，并自动下载/更新 |
-| `YU_GEOIP_URL` | 空 | 自定义 MMDB 下载地址；空则使用 DB-IP Country Lite 公开地址 |
-| `YU_GEOIP_UPDATE_HOURS` | `168` | 数据库刷新间隔（小时），`0` 表示只在启动时下载一次 |
+| `YU_GEOIP_DB` | 空（Docker 为 `/data/dbip-city-lite.mmdb`） | MMDB 数据库路径；设置后启用国家/地区/城市，并自动下载/更新 |
+| `YU_GEOIP_URL` | 空 | 自定义 MMDB 下载地址；空则使用 DB-IP City Lite 公开地址 |
+| `YU_GEOIP_UPDATE_HOURS` | `720` | 数据库刷新间隔（小时），`0` 表示只在启动时下载一次 |
 
 ## 地理信息
 
 - 设置 `YU_GEOIP_DB` 后启用，程序会在启动时下载一次，并按 `YU_GEOIP_UPDATE_HOURS` 定时刷新；下载成功后热加载，无需重启
-- 默认使用公开的 DB-IP Country Lite（无需账号），Docker Compose 已配置持久化卷 `geoip:/data`；把 `YU_GEOIP_DB` 设为空可关闭
+- 默认使用公开的 DB-IP City Lite（无需账号），Docker Compose 已配置持久化卷 `geoip:/data`；把 `YU_GEOIP_DB` 设为空可关闭
+- City Lite 提供英文省市名，文件约 127MB；默认每 30 天刷新一次，避免频繁下载
 - 想用 MaxMind GeoLite2 时，把 `YU_GEOIP_URL` 设为带 license key 的下载地址（支持 `.mmdb`、`.mmdb.gz`、`.tar.gz`），并把 `YU_GEOIP_DB` 指向目标文件
 - 未配置 GeoIP 时，国家/地区/城市字段保持为空，不影响其他统计
 - 地理信息在请求时实时查询，历史事件未保存 IP，无法补算

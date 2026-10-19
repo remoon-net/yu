@@ -30,7 +30,7 @@ type Updater struct {
 	client   *http.Client
 }
 
-// NewUpdater 创建更新器。url 为空时使用 DB-IP Country Lite 的当月公开地址。
+// NewUpdater 创建更新器。url 为空时使用 DB-IP City Lite 的当月公开地址。
 func NewUpdater(lookup *Lookup, path, url string, interval time.Duration) *Updater {
 	return &Updater{
 		lookup:   lookup,
@@ -91,13 +91,13 @@ func (u *Updater) sourceURLs(now time.Time) []string {
 		return []string{u.url}
 	}
 	return []string{
-		dbipCountryURL(now),
-		dbipCountryURL(now.AddDate(0, -1, 0)),
+		dbipCityURL(now),
+		dbipCityURL(now.AddDate(0, -1, 0)),
 	}
 }
 
-func dbipCountryURL(now time.Time) string {
-	return "https://download.db-ip.com/free/dbip-country-lite-" + now.UTC().Format("2006-01") + ".mmdb.gz"
+func dbipCityURL(now time.Time) string {
+	return "https://download.db-ip.com/free/dbip-city-lite-" + now.UTC().Format("2006-01") + ".mmdb.gz"
 }
 
 func (u *Updater) download(ctx context.Context, url string) error {

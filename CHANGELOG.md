@@ -6,7 +6,7 @@
 
 ### 新增
 
-- GeoIP 数据库改为自动下载与热更新：默认使用公开的 DB-IP Country Lite，支持自定义下载地址（含 MaxMind GeoLite2），并持久化到 Docker volume
+- GeoIP 数据库改为自动下载与热更新：默认使用公开的 DB-IP City Lite（含英文省市名），支持自定义下载地址（含 MaxMind GeoLite2），并持久化到 Docker volume
 
 ### 变更
 
